@@ -1,0 +1,12 @@
+[package]
+name = "rustmann"
+version = "0.1.0"
+authors = ["Ning Sun <sunng@protonmail.com>"]
+
+[dependencies]
+tokio = "0.1.8"
+futures = "0.1"
+protobuf = "2"
+
+[build-dependencies]
+protoc-rust = "2"
