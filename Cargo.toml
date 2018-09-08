@@ -6,7 +6,8 @@ authors = ["Ning Sun <sunng@protonmail.com>"]
 [dependencies]
 tokio = "0.1.8"
 futures = "0.1"
-protobuf = "2"
+protobuf = { version = "2", features = ["with-bytes"] }
+bytes = "0.4"
 
 [build-dependencies]
 protoc-rust = "2"

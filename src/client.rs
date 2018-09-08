@@ -4,12 +4,15 @@ use futures::future::Future;
 
 #[derive(Debug)]
 struct Client {
-    connection: Future<TcpStream>
+    connection: ConnectFuture;
 }
 
 impl Client {
 
     pub fn connect(addr: &SocketAddr) -> Client {
-
+        let cf = TcpStream::connect(addr);
+        Client {
+            connection: cf
+        }
     }
 }
