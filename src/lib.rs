@@ -5,3 +5,4 @@ extern crate futures;
 
 mod codec;
 mod protos;
+mod client;

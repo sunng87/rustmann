@@ -1,25 +1,30 @@
-use tokio::codec::{Encoder, Decoder};
-use bytes::{BufMut, BytesMut, ByteOrder, BigEndian};
-use protobuf::{Message, parse_from_carllerche_bytes};
+use bytes::{BigEndian, BufMut, ByteOrder, BytesMut};
+use protobuf::{parse_from_carllerche_bytes, Message};
+use tokio::codec::{Decoder, Encoder};
 
 use std::io;
 
-use protos::riemann::{Event, Msg};
+use protos::riemann::Msg;
 
-impl Encoder for Msg {
-    type Item = Self;
+pub struct MsgCodec;
+
+impl Encoder for MsgCodec {
+    type Item = Msg;
     type Error = io::Error;
 
-    fn encode(&mut self, msg: Self, buf: &mut BytesMut) -> io::Result<()> {
+    fn encode(&mut self, msg: Self::Item, buf: &mut BytesMut) -> io::Result<()> {
         let data = msg.write_to_bytes().map_err(io::Error::from)?;
+
+        buf.reserve(4 + data.len());
+
         BigEndian::write_u32(buf, data.len() as u32);
         buf.put(&data);
         Ok(())
     }
 }
 
-impl Decoder for Msg {
-    type Item = Self;
+impl Decoder for MsgCodec {
+    type Item = Msg;
     type Error = io::Error;
 
     fn decode(&mut self, buf: &mut BytesMut) -> io::Result<Option<Self::Item>> {
