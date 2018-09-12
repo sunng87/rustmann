@@ -4,5 +4,7 @@ extern crate bytes;
 extern crate futures;
 
 mod codec;
-mod protos;
+pub mod protos;
 mod client;
+
+pub use client::Client;

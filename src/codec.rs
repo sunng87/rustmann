@@ -6,6 +6,7 @@ use std::io;
 
 use protos::riemann::Msg;
 
+#[derive(Debug)]
 pub struct MsgCodec;
 
 impl Encoder for MsgCodec {
