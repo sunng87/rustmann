@@ -2,6 +2,11 @@
 name = "rustmann"
 version = "0.1.0"
 authors = ["Ning Sun <sunng@protonmail.com>"]
+description = "Rust/Tokio client for Riemann"
+license = "MIT/Apache-2.0"
+keywords = ["tokio", "riemann", "client"]
+repository = "https://github.com/sunng87/rustmann"
+readme = "README.md"
 
 [dependencies]
 tokio = "0.1.8"
