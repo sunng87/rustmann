@@ -1,10 +1,10 @@
-extern crate tokio;
-extern crate protobuf;
 extern crate bytes;
 extern crate futures;
+extern crate protobuf;
+extern crate tokio;
 
+mod client;
 mod codec;
 pub mod protos;
-mod client;
 
 pub use client::Client;

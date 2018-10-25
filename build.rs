@@ -12,5 +12,6 @@ fn main() {
             carllerche_bytes_for_string: Some(true),
             ..Default::default()
         },
-    }).expect("protoc");
+    })
+    .expect("protoc");
 }
