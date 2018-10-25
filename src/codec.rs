@@ -3,6 +3,7 @@ use protobuf::{parse_from_carllerche_bytes, Message};
 use tokio::codec::{Decoder, Encoder};
 
 use std::io;
+use std::usize;
 
 use protos::riemann::Msg;
 
@@ -18,7 +19,7 @@ impl Encoder for MsgCodec {
 
         buf.reserve(4 + data.len());
 
-        BigEndian::write_u32(buf, data.len() as u32);
+        buf.put_u32_be(data.len() as u32);
         buf.put(&data);
         Ok(())
     }
