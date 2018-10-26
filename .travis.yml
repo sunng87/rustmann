@@ -2,3 +2,7 @@ language: rust
 rust:
   - nightly
   - stable
+dist: trusty
+sudo: required
+before_script:
+  - sudo apt-get install protobuf
