@@ -5,4 +5,4 @@ rust:
 dist: trusty
 sudo: required
 before_script:
-  - sudo apt-get install protobuf
+  - sudo apt-get install protobuf-compiler
