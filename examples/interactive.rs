@@ -13,10 +13,10 @@ use tokio_fs::stdin;
 
 use protobuf::Chars;
 use rustmann::protos::riemann::Event;
-use rustmann::Client;
+use rustmann::Connection;
 
 fn main() -> Result<(), Box<Error>> {
-    let client = Client::connect(&"127.0.0.1:5555".parse()?);
+    let client = Connection::connect(&"127.0.0.1:5555".parse()?);
     let input = FramedRead::new(stdin(), LinesCodec::new());
 
     let f = client
@@ -24,7 +24,9 @@ fn main() -> Result<(), Box<Error>> {
             let readloop = input
                 .for_each(move |line| {
                     let mut event = Event::new();
-                    event.set_service(Chars::from(line));
+                    event.set_host(Chars::from("thinkless"));
+                    event.set_service(Chars::from("rustmann_interactive"));
+                    event.set_description(line.into());
 
                     tokio::spawn(
                         c.send_events(vec![event])

@@ -9,10 +9,10 @@ use futures::Future;
 
 use protobuf::Chars;
 use rustmann::protos::riemann::Event;
-use rustmann::Client;
+use rustmann::Connection;
 
 fn main() -> Result<(), Box<Error>> {
-    let client = Client::connect(&"127.0.0.1:5555".parse()?);
+    let client = Connection::connect(&"127.0.0.1:5555".parse()?);
     let f = client
         .and_then(move |mut c| {
             let mut event = Event::new();
