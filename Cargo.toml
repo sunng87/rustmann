@@ -16,7 +16,3 @@ bytes = "0.4"
 
 [build-dependencies]
 protoc-rust = "2"
-
-[dev-dependencies]
-tokio-codec ="0.1"
-tokio-fs ="0.1"
