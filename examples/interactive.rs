@@ -14,7 +14,7 @@ use rustmann::protos::riemann::Event;
 use rustmann::Connection;
 
 fn main() -> Result<(), Box<Error>> {
-    let client = Connection::connect(&"127.0.0.1:5555".parse()?);
+    let client = Connection::connect(&"127.0.0.1:5555".parse()?, 5000);
     let input = FramedRead::new(stdin(), LinesCodec::new());
 
     let f = client
@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<Error>> {
                     event.set_description(line.into());
 
                     tokio::spawn(
-                        c.send_events(vec![event])
+                        c.send_events(vec![event], 5000)
                             .and_then(|r| {
                                 println!("{:?}", r);
                                 Ok(())

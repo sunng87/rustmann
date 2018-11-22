@@ -12,13 +12,13 @@ use rustmann::protos::riemann::Event;
 use rustmann::Connection;
 
 fn main() -> Result<(), Box<Error>> {
-    let client = Connection::connect(&"127.0.0.1:5555".parse()?);
+    let client = Connection::connect(&"127.0.0.1:5555".parse()?, 5000);
     let f = client
         .and_then(move |mut c| {
             let mut event = Event::new();
             event.set_service(Chars::from("test"));
 
-            c.send_events(vec![event])
+            c.send_events(vec![event], 5000)
         })
         .and_then(|r| {
             println!("{:?}", r);
