@@ -7,12 +7,14 @@ license = "MIT/Apache-2.0"
 keywords = ["tokio", "riemann", "client"]
 repository = "https://github.com/sunng87/rustmann"
 readme = "README.md"
+edition = "2018"
 
 [dependencies]
 tokio = "0.1.8"
 futures = "0.1"
 protobuf = { version = "2", features = ["with-bytes"] }
 bytes = "0.4"
+derive_builder = "0.7.0"
 
 [build-dependencies]
 protoc-rust = "2"

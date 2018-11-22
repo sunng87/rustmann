@@ -5,7 +5,7 @@ use tokio::codec::{Decoder, Encoder};
 use std::io;
 use std::usize;
 
-use protos::riemann::Msg;
+use crate::protos::riemann::Msg;
 
 #[derive(Debug)]
 pub struct MsgCodec;

@@ -1,10 +1,13 @@
-extern crate bytes;
-extern crate futures;
-extern crate protobuf;
-extern crate tokio;
+// extern crate bytes;
+// extern crate futures;
+// extern crate protobuf;
+// extern crate tokio;
+// #[macro_use]
+// extern crate derive_builder;
 
-mod connection;
+mod client;
 mod codec;
+mod connection;
 pub mod protos;
 
-pub use connection::Connection;
+pub use crate::connection::Connection;
