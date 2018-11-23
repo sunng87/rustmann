@@ -17,10 +17,11 @@ use crate::protos::riemann::{Event, Msg};
 
 #[derive(Debug)]
 pub struct Client {
-    // connection: Arc<Connection>,
+    conn: Arc<Option<Connection>>,
+    options: ClientOptions,
 }
 
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Clone)]
 #[builder(setter(into))]
 pub struct ClientOptions {
     address: SocketAddr,
@@ -30,6 +31,10 @@ pub struct ClientOptions {
 
 impl Client {
     pub fn new(options: &ClientOptions) -> Client {
-        Client {}
+        Client {
+            conn: Arc::new(None),
+            options: options.clone(),
+        }
     }
+
 }
