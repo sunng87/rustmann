@@ -17,7 +17,7 @@ use crate::protos::riemann::{Event, Msg};
 
 #[derive(Debug)]
 pub struct Client {
-    conn: Arc<Option<Connection>>,
+    conn: Arc<RwLock<Option<Connection>>>,
     options: ClientOptions,
 }
 
@@ -32,7 +32,7 @@ pub struct ClientOptions {
 impl Client {
     pub fn new(options: &ClientOptions) -> Client {
         Client {
-            conn: Arc::new(None),
+            conn: Arc::new(RwLock::new(None)),
             options: options.clone(),
         }
     }
