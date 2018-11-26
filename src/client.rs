@@ -1,10 +1,11 @@
 use std::collections::VecDeque;
-use std::ops::Deref;
 use std::io;
 use std::net::SocketAddr;
+use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
 use derive_builder::Builder;
+use futures::future::{self, IntoFuture};
 use futures::sync::mpsc::{self, UnboundedSender};
 use futures::sync::oneshot::{self, Sender};
 use futures::{Future, Sink, Stream};
@@ -30,18 +31,22 @@ pub struct ClientOptions {
     socket_timeout_ms: u64,
 }
 
+pub struct RustmannFuture {
+}
+
 impl Client {
     pub fn new(options: &ClientOptions) -> Client {
         Client {
-            conn: Arc::new(Mutex::new(None)),
+            connection: Arc::new(Mutex::new(None)),
             options: options.clone(),
         }
     }
 
+    // TODO: future type for request
     pub fn send_events(
         &mut self,
         events: Vec<Event>,
-    ) -> impl Future<Item = Msg, Error = io::Error> {
+    ) -> RustmannFuture {
         let conn = self.connection.clone();
         let read_timeout = self.options.socket_timeout_ms;
 
@@ -50,10 +55,13 @@ impl Client {
                 conn_ref.send_events(events, read_timeout)
             } else {
                 Connection::connect(&self.options.address, self.options.connect_timeout_ms)
-                    .map(|conn| conn.send_events(events, read_timeout))
+                    .and_then(|conn| conn.send_events(events, read_timeout))
             }
         } else {
-            Err(io::Error::new(io::ErrorKind::Other, "Can not get client lock."))
+            future::err(io::Error::new(
+                io::ErrorKind::Other,
+                "Can not get lock for client connection.",
+            ))
         }
     }
 }
