@@ -3,7 +3,6 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use futures::future;
-use futures::future::FutureResult;
 use futures::stream::SplitSink;
 use futures::sync::mpsc::{self, UnboundedSender};
 use futures::sync::oneshot::{self, Sender};
@@ -72,7 +71,7 @@ impl Connection {
         &mut self,
         events: Vec<Event>,
         socket_timeout: u64,
-    ) -> FutureResult<Msg, io::Error> {
+    ) -> impl Future<Item = Msg, Error = io::Error> {
         let mut msg = Msg::new();
         msg.set_events(RepeatedField::from_vec(events));
 

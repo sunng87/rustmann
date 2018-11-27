@@ -8,7 +8,7 @@ use derive_builder::Builder;
 use futures::future::{self, IntoFuture};
 use futures::sync::mpsc::{self, UnboundedSender};
 use futures::sync::oneshot::{self, Sender};
-use futures::{Future, Sink, Stream};
+use futures::{Async, Future, Sink, Stream};
 use protobuf::RepeatedField;
 use tokio;
 use tokio::codec::Framed;
@@ -20,6 +20,7 @@ use crate::protos::riemann::{Event, Msg};
 #[derive(Debug)]
 pub struct Client {
     connection: Arc<Mutex<Option<Connection>>>,
+
     options: ClientOptions,
 }
 
@@ -32,6 +33,25 @@ pub struct ClientOptions {
 }
 
 pub struct RustmannFuture {
+    inner: Box<Future<Item = Msg, Error = io::Error>>,
+}
+
+impl RustmannFuture {
+    pub fn new<F>(f: F) -> RustmannFuture
+    where
+        F: Future<Item = Msg, Error = io::Error> + 'static,
+    {
+        RustmannFuture { inner: Box::new(f) }
+    }
+}
+
+impl Future for RustmannFuture {
+    type Item = Msg;
+    type Error = io::Error;
+
+    fn poll(&mut self) -> Result<Async<Self::Item>, Self::Error> {
+        self.inner.poll()
+    }
 }
 
 impl Client {
@@ -42,26 +62,26 @@ impl Client {
         }
     }
 
-    // TODO: future type for request
-    pub fn send_events(
-        &mut self,
-        events: Vec<Event>,
-    ) -> RustmannFuture {
+    pub fn send_events(&mut self, events: Vec<Event>) -> RustmannFuture {
         let conn = self.connection.clone();
         let read_timeout = self.options.socket_timeout_ms;
 
         if let Ok(conn_ref) = conn.lock() {
-            if let Some(conn_ref) = conn_ref.deref() {
-                conn_ref.send_events(events, read_timeout)
+            if let Some(mut conn_ref) = *conn_ref {
+                // TODO: error handling
+                RustmannFuture::new(conn_ref.send_events(events, read_timeout))
             } else {
-                Connection::connect(&self.options.address, self.options.connect_timeout_ms)
-                    .and_then(|conn| conn.send_events(events, read_timeout))
+                RustmannFuture::new(
+                    // TODO: modify client
+                    Connection::connect(&self.options.address, self.options.connect_timeout_ms)
+                        .and_then(|mut conn| conn.send_events(events, read_timeout)),
+                )
             }
         } else {
-            future::err(io::Error::new(
+            RustmannFuture::new(future::err(io::Error::new(
                 io::ErrorKind::Other,
                 "Can not get lock for client connection.",
-            ))
+            )))
         }
     }
 }
