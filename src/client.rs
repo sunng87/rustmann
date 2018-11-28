@@ -1,15 +1,12 @@
 use std::collections::VecDeque;
 use std::io;
 use std::net::SocketAddr;
-use std::ops::Deref;
+use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
 use derive_builder::Builder;
-use futures::future::{self, IntoFuture};
-use futures::sync::mpsc::{self, UnboundedSender};
-use futures::sync::oneshot::{self, Sender};
+use futures::future::{self};
 use futures::{Async, Future, Sink, Stream};
-use protobuf::RepeatedField;
 use tokio;
 use tokio::codec::Framed;
 use tokio::net::TcpStream;
@@ -66,15 +63,19 @@ impl Client {
         let conn = self.connection.clone();
         let read_timeout = self.options.socket_timeout_ms;
 
-        if let Ok(conn_ref) = conn.lock() {
-            if let Some(mut conn_ref) = *conn_ref {
+        let mut conn_lock = conn.lock();
+        if let Ok(ref mut conn_opt_ref) = conn_lock {
+            if let Some(conn_ref) = conn_opt_ref.deref_mut() {
                 // TODO: error handling
                 RustmannFuture::new(conn_ref.send_events(events, read_timeout))
             } else {
                 RustmannFuture::new(
                     // TODO: modify client
                     Connection::connect(&self.options.address, self.options.connect_timeout_ms)
-                        .and_then(|mut conn| conn.send_events(events, read_timeout)),
+                        .and_then(move |mut conn_inner| {
+                            *conn_opt_ref.deref_mut() = Some(conn_inner);
+                            conn_inner.send_events(events, read_timeout)
+                        }),
                 )
             }
         } else {
