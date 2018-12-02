@@ -68,28 +68,26 @@ impl Connection {
     }
 
     pub fn send_events(
-        &mut self,
+        self,
         events: Vec<Event>,
         socket_timeout: u64,
-    ) -> impl Future<Item = Msg, Error = io::Error> {
+    ) -> impl Future<Item = (Msg, Self), Error = io::Error> {
         let mut msg = Msg::new();
         msg.set_events(RepeatedField::from_vec(events));
 
         let (tx, rx) = oneshot::channel::<Msg>();
 
-        let send_result = self
-            .sender_queue
-            .unbounded_send(tx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-            .and_then(move |_| {
-                self.socket_sender
-                    .start_send(msg)
-                    .and_then(|_| self.socket_sender.poll_complete())
-            });
-
-        future::result(send_result)
-            .and_then(|_| rx.map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e)))
-            .timeout(Duration::from_millis(socket_timeout))
-            .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
+        future::result(
+            self.sender_queue
+                .unbounded_send(tx)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e)),
+        )
+        .and_then(|_| self.socket_sender.send(msg).map(|_| self))
+        .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
+        .and_then(move |this| {
+            rx.map(|r| (r, this))
+                .timeout(Duration::from_millis(socket_timeout))
+                .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
+        })
     }
 }

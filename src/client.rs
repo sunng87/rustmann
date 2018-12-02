@@ -13,9 +13,12 @@ use tokio;
 use crate::connection::Connection;
 use crate::protos::riemann::{Event, Msg};
 
+pub type RustmannResult = Result<Msg, io::Error>;
+pub type RustmannFuture = Box<dyn Future<Item = Msg, Error = io::Error>>;
+
 pub struct Client {
     // connection: Arc<Mutex<Option<Connection>>>,
-    queue: mpsc::UnboundedSender<(Vec<Event>, Sender<Result<Msg, io::Error>>)>,
+    queue: mpsc::UnboundedSender<(Vec<Event>, Sender<RustmannResult>)>,
     options: ClientOptions,
 }
 
@@ -27,39 +30,48 @@ pub struct ClientOptions {
     socket_timeout_ms: u64,
 }
 
-pub type RustmannFuture = Box<dyn Future<Item = Msg, Error = io::Error>>;
-
 impl Client {
-    pub fn new(options: &ClientOptions) -> Client {
+    pub fn new(options: &ClientOptions) -> Self {
         let (tx, rx) = mpsc::unbounded();
 
-        let mut connection: Option<Connection> = None;
-        let queue_future = rx.for_each(move |(events, sender)| {
-            let (new_conn, result) = future::loop_fn(connection, |conn_opt| {
-                if let Some(conn) = conn_opt {
-                    return conn
-                        .send_events(events, options.socket_timeout_ms)
-                        .then(|r| {
-                            if r.is_ok() {
-                                Ok(Loop::Break((Some(conn), r)))
-                            } else {
-                                Ok(Loop::Break((None, r)))
-                            }
-                        });
-                } else {
-                    return Connection::connect(&options.address, options.connect_timeout_ms).then(
-                        |r| match r {
-                            Ok(conn) => Ok(Loop::Continue(Some(conn))),
-                            Err(_) => Ok(Loop::Continue(None)),
-                        },
-                    );
-                }
-            });
+        let ClientOptions {
+            address,
+            connect_timeout_ms,
+            socket_timeout_ms,
+        } = options.clone();
 
-            connection = new_conn;
-            sender.send(result).map_err(|_| ());
-            Ok(())
-        });
+        let mut connection: Option<Connection> = None;
+        let queue_future = rx.for_each(
+            move |(events, sender): (Vec<Event>, Sender<RustmannResult>)| {
+                let looper = future::loop_fn(connection, move |conn_opt| {
+                    if let Some(conn) = conn_opt {
+                        Either::A(
+                            conn.send_events(events, socket_timeout_ms)
+                                .then(|r| match r {
+                                    Ok((msg, inner_conn)) => {
+                                        Ok(Loop::Break((Some(inner_conn), Ok(msg))))
+                                    }
+                                    Err(e) => Ok(Loop::Break((None, Err(e)))),
+                                }),
+                        )
+                    } else {
+                        Either::B(Connection::connect(&address, connect_timeout_ms).then(
+                            |r| match r {
+                                Ok(conn) => Ok(Loop::Continue(Some(conn))),
+                                Err(_) => Ok(Loop::Continue(None)),
+                            },
+                        ))
+                    }
+                });
+
+                looper.and_then(|(new_conn, result)| {
+                    connection = new_conn;
+                    sender.send(result).map_err(|_| ());
+                    Ok(())
+                })
+            },
+        );
+        tokio::spawn(queue_future);
 
         Client {
             queue: tx,
@@ -87,8 +99,8 @@ impl Client {
     pub fn send_events(&self, events: Vec<Event>) -> impl Future<Item = Msg, Error = io::Error> {
         let (tx, rx) = oneshot::channel::<Result<Msg, io::Error>>();
 
-        self.queue.send((events, tx));
-        rx.map_err(|e| io::Error::new(io::ErrorKind::Other, "Canceled"))
+        self.queue.unbounded_send((events, tx));
+        rx.map_err(|_| io::Error::new(io::ErrorKind::Other, "Canceled"))
             .and_then(future::result)
     }
 }
