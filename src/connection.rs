@@ -69,11 +69,11 @@ impl Connection {
 
     pub fn send_events(
         self,
-        events: Vec<Event>,
+        events: &Vec<Event>,
         socket_timeout: u64,
     ) -> impl Future<Item = (Msg, Self), Error = io::Error> {
         let mut msg = Msg::new();
-        msg.set_events(RepeatedField::from_vec(events));
+        msg.set_events(RepeatedField::from_slice(events));
 
         let (tx, rx) = oneshot::channel::<Msg>();
 

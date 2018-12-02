@@ -46,7 +46,7 @@ impl Client {
                 let looper = future::loop_fn(connection, move |conn_opt| {
                     if let Some(conn) = conn_opt {
                         Either::A(
-                            conn.send_events(events, socket_timeout_ms)
+                            conn.send_events(&events, socket_timeout_ms)
                                 .then(|r| match r {
                                     Ok((msg, inner_conn)) => {
                                         Ok(Loop::Break((Some(inner_conn), Ok(msg))))
