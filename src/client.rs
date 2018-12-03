@@ -48,8 +48,8 @@ impl Client {
                         Either::A(
                             conn.send_events(&events, socket_timeout_ms)
                                 .then(|r| match r {
-                                    Ok((msg, inner_conn)) => {
-                                        Ok(Loop::Break((Some(inner_conn), Ok(msg))))
+                                    Ok(msg) => {
+                                        Ok(Loop::Break((Some(conn), Ok(msg))))
                                     }
                                     Err(e) => Ok(Loop::Break((None, Err(e)))),
                                 }),

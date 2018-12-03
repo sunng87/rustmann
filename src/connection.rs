@@ -1,4 +1,5 @@
 use std::io;
+use std::mem;
 use std::net::SocketAddr;
 use std::time::Duration;
 
@@ -68,10 +69,10 @@ impl Connection {
     }
 
     pub fn send_events(
-        self,
+        &mut self,
         events: &Vec<Event>,
         socket_timeout: u64,
-    ) -> impl Future<Item = (Msg, Self), Error = io::Error> {
+    ) -> impl Future<Item = Msg, Error = io::Error> {
         let mut msg = Msg::new();
         msg.set_events(RepeatedField::from_slice(events));
 
@@ -80,13 +81,16 @@ impl Connection {
         future::result(
             self.sender_queue
                 .unbounded_send(tx)
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e)),
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+                .and_then(|_| {
+                    self.socket_sender
+                        .start_send(msg)
+                        .and_then(|_| self.socket_sender.poll_complete())
+                }),
         )
-        .and_then(|_| self.socket_sender.send(msg).map(|_| self))
         .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
-        .and_then(move |this| {
-            rx.map(|r| (r, this))
-                .timeout(Duration::from_millis(socket_timeout))
+        .and_then(move |_| {
+            rx.timeout(Duration::from_millis(socket_timeout))
                 .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
         })
     }
