@@ -1,6 +1,7 @@
 use std::io;
 use std::net::SocketAddr;
 use std::ops::DerefMut;
+use std::borrow::Borrow;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use derive_builder::Builder;
@@ -40,37 +41,45 @@ impl Client {
             socket_timeout_ms,
         } = options.clone();
 
-        let mut connection: Option<Connection> = None;
-        let queue_future = rx.for_each(
-            move |(events, sender): (Vec<Event>, Sender<RustmannResult>)| {
-                let looper = future::loop_fn(connection, move |conn_opt| {
-                    if let Some(conn) = conn_opt {
-                        Either::A(
-                            conn.send_events(&events, socket_timeout_ms)
-                                .then(|r| match r {
+        let active_connection: Arc<Mutex<Option<Connection>>> = Arc::new(Mutex::new(None));
+        let queue_future = rx
+            .for_each(
+                move |(events, sender): (Vec<Event>, Sender<RustmannResult>)| {
+                    future::loop_fn(active_connection, move |ac| {
+                        let mut conn_opt_lock = ac.clone();
+                        if let Some(mut conn) = conn_opt_lock {
+                            Either::A(conn.send_events(&events, socket_timeout_ms).then(|r| {
+                                sender.send(r).map_err(|_| ());
+                                let conn_lock_guard = conn_opt_lock.lock().unwrap();
+                                match r {
                                     Ok(msg) => {
-                                        Ok(Loop::Break((Some(conn), Ok(msg))))
+                                        *conn_lock_guard = Some(conn);
+                                        Ok(Loop::Break(()))
                                     }
-                                    Err(e) => Ok(Loop::Break((None, Err(e)))),
-                                }),
-                        )
-                    } else {
-                        Either::B(Connection::connect(&address, connect_timeout_ms).then(
-                            |r| match r {
-                                Ok(conn) => Ok(Loop::Continue(Some(conn))),
-                                Err(_) => Ok(Loop::Continue(None)),
-                            },
-                        ))
-                    }
-                });
+                                    Err(e) => {
+                                        *conn_lock_guard = None;
+                                        Ok(Loop::Break(()))
+                                    }
+                                }
+                            }))
+                        } else {
+                            Either::B(Connection::connect(&address, connect_timeout_ms).then(|r| {
+                                let conn_lock_guard = conn_opt_lock.lock().unwrap();
+                                match r {
+                                    Ok(conn) => {
+                                        *conn_lock_guard = Some(conn);
+                                        Ok(Loop::Continue(ac))
+                                    }
+                                    Err(_) => Ok(Loop::Continue(ac)),
+                                }
+                            }))
+                        }
+                    })
+                    .map_err(|_| ())
+                },
+            )
+            .map_err(|_| ());
 
-                looper.and_then(|(new_conn, result)| {
-                    connection = new_conn;
-                    sender.send(result).map_err(|_| ());
-                    Ok(())
-                })
-            },
-        );
         tokio::spawn(queue_future);
 
         Client {
