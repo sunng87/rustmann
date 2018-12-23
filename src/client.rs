@@ -21,6 +21,13 @@ pub struct Client {
     // connection: Arc<Mutex<Option<Connection>>>,
     queue: mpsc::UnboundedSender<(Vec<Event>, Sender<RustmannResult>)>,
     options: ClientOptions,
+    state: Arc<ClientState>,
+}
+
+enum ClientState {
+    Connected(Connection),
+    Connecting,
+    Disconnected,
 }
 
 #[derive(Debug, Builder, Clone)]
