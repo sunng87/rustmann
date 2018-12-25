@@ -8,7 +8,7 @@ use derive_builder::Builder;
 use futures::future::{self, Either, Loop};
 use futures::sync::mpsc;
 use futures::sync::oneshot::{self, Sender};
-use futures::{Async, Future, Sink, Stream};
+use futures::{Async, Future, Sink, Stream, Poll};
 use tokio;
 
 use crate::connection::Connection;
@@ -19,15 +19,29 @@ pub type RustmannFuture = Box<dyn Future<Item = Msg, Error = io::Error>>;
 
 pub struct Client {
     // connection: Arc<Mutex<Option<Connection>>>,
-    queue: mpsc::UnboundedSender<(Vec<Event>, Sender<RustmannResult>)>,
     options: ClientOptions,
-    state: Arc<ClientState>,
+    state: Arc<Mutex<ClientState>>,
 }
 
 enum ClientState {
     Connected(Connection),
     Connecting,
     Disconnected,
+}
+
+impl Future for ClientState {
+    type Item = Connection;
+    type Error = io::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        match self {
+            ClientState::Connected(ref conn) => Ok(Async::Ready(conn)),
+            ClientState::Connecting => Ok(Async::NotReady()),
+            ClientState::Disconnected => {
+                // TODO: transform state
+            }
+        }
+    }
 }
 
 #[derive(Debug, Builder, Clone)]
