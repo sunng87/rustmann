@@ -1,14 +1,14 @@
+use std::borrow::Borrow;
 use std::io;
 use std::net::SocketAddr;
 use std::ops::DerefMut;
-use std::borrow::Borrow;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use derive_builder::Builder;
 use futures::future::{self, Either, Loop};
 use futures::sync::mpsc;
 use futures::sync::oneshot::{self, Sender};
-use futures::{Async, Future, Sink, Stream, Poll};
+use futures::{Async, Future, Poll, Sink, Stream};
 use tokio;
 
 use crate::connection::Connection;
@@ -20,25 +20,41 @@ pub type RustmannFuture = Box<dyn Future<Item = Msg, Error = io::Error>>;
 pub struct Client {
     // connection: Arc<Mutex<Option<Connection>>>,
     options: ClientOptions,
-    state: Arc<Mutex<ClientState>>,
+    state: ClientInnerState,
+}
+
+pub struct ClientInnerState {
+    inner: Arc<Mutex<ClientState>>,
 }
 
 enum ClientState {
     Connected(Connection),
-    Connecting,
+    Connecting(Box<Future<Item = Connection, Error = io::Error>>),
     Disconnected,
 }
 
-impl Future for ClientState {
+impl Future for ClientInnerState {
     type Item = Connection;
     type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        match self {
+        let mut inner_state = self.inner.lock().unwrap();
+        match inner_state {
             ClientState::Connected(ref conn) => Ok(Async::Ready(conn)),
-            ClientState::Connecting => Ok(Async::NotReady()),
+            ClientState::Connecting(f) => {
+                match f.poll() {
+                    Ok(Async::Ready(conn)) => {
+                        // TODO: transform state
+                        *inner_state = ClientState::Connected(conn);
+                        Ok(Async::Ready(conn))
+                    }
+                    Ok(Async::NotReady) => Ok(Async::NotReady),
+                    Err(e) => Err(e),
+                }
+            }
             ClientState::Disconnected => {
-                // TODO: transform state
+                *inner_state = ClientState::Connecting(Connection::new(/*TODO*/));
+                Ok(Async::NotReady)
             }
         }
     }
@@ -54,57 +70,10 @@ pub struct ClientOptions {
 
 impl Client {
     pub fn new(options: &ClientOptions) -> Self {
-        let (tx, rx) = mpsc::unbounded();
-
-        let ClientOptions {
-            address,
-            connect_timeout_ms,
-            socket_timeout_ms,
-        } = options.clone();
-
-        let active_connection: Arc<Mutex<Option<Connection>>> = Arc::new(Mutex::new(None));
-        let queue_future = rx
-            .for_each(
-                move |(events, sender): (Vec<Event>, Sender<RustmannResult>)| {
-                    future::loop_fn(active_connection, move |ac| {
-                        let mut conn_opt_lock = ac.clone();
-                        if let Some(mut conn) = conn_opt_lock {
-                            Either::A(conn.send_events(&events, socket_timeout_ms).then(|r| {
-                                sender.send(r).map_err(|_| ());
-                                let conn_lock_guard = conn_opt_lock.lock().unwrap();
-                                match r {
-                                    Ok(msg) => {
-                                        *conn_lock_guard = Some(conn);
-                                        Ok(Loop::Break(()))
-                                    }
-                                    Err(e) => {
-                                        *conn_lock_guard = None;
-                                        Ok(Loop::Break(()))
-                                    }
-                                }
-                            }))
-                        } else {
-                            Either::B(Connection::connect(&address, connect_timeout_ms).then(|r| {
-                                let conn_lock_guard = conn_opt_lock.lock().unwrap();
-                                match r {
-                                    Ok(conn) => {
-                                        *conn_lock_guard = Some(conn);
-                                        Ok(Loop::Continue(ac))
-                                    }
-                                    Err(_) => Ok(Loop::Continue(ac)),
-                                }
-                            }))
-                        }
-                    })
-                    .map_err(|_| ())
-                },
-            )
-            .map_err(|_| ());
-
-        tokio::spawn(queue_future);
-
         Client {
-            queue: tx,
+            state: ClientInnerState {
+                inner: Arc::new(Mutex::new(ClientState::Disconnected)),
+            },
             options: options.clone(),
         }
     }
@@ -127,10 +96,8 @@ impl Client {
     // }
 
     pub fn send_events(&self, events: Vec<Event>) -> impl Future<Item = Msg, Error = io::Error> {
-        let (tx, rx) = oneshot::channel::<Result<Msg, io::Error>>();
-
-        self.queue.unbounded_send((events, tx));
-        rx.map_err(|_| io::Error::new(io::ErrorKind::Other, "Canceled"))
-            .and_then(future::result)
+        // TODO: on error
+        self.state
+            .and_then(|conn| conn.send_events(&events, self.options.socket_timeout_ms))
     }
 }
