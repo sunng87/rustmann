@@ -8,7 +8,7 @@ use derive_builder::Builder;
 use futures::future::{self, Either, Loop};
 use futures::sync::mpsc;
 use futures::sync::oneshot::{self, Sender};
-use futures::{Async, Future, Poll, Sink, Stream};
+use futures::{try_ready, Async, Future, Poll, Sink, Stream};
 use tokio;
 
 use crate::connection::Connection;
@@ -20,40 +20,32 @@ pub type RustmannFuture = Box<dyn Future<Item = Msg, Error = io::Error>>;
 pub struct Client {
     // connection: Arc<Mutex<Option<Connection>>>,
     options: ClientOptions,
-    state: ClientInnerState,
-}
-
-pub struct ClientInnerState {
-    inner: Arc<Mutex<ClientState>>,
+    state: Arc<Mutex<ClientState>>,
 }
 
 enum ClientState {
-    Connected(Connection),
+    Connected(Arc<Mutex<Connection>>),
     Connecting(Box<Future<Item = Connection, Error = io::Error>>),
     Disconnected,
 }
 
-impl Future for ClientInnerState {
-    type Item = Connection;
+impl Future for Client {
+    type Item = Arc<Mutex<Connection>>;
     type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let mut inner_state = self.inner.lock().unwrap();
-        match inner_state {
-            ClientState::Connected(ref conn) => Ok(Async::Ready(conn)),
-            ClientState::Connecting(f) => {
-                match f.poll() {
-                    Ok(Async::Ready(conn)) => {
-                        // TODO: transform state
-                        *inner_state = ClientState::Connected(conn);
-                        Ok(Async::Ready(conn))
-                    }
-                    Ok(Async::NotReady) => Ok(Async::NotReady),
-                    Err(e) => Err(e),
-                }
+        let mut inner_state = self.state.lock().unwrap();
+        match inner_state.deref_mut() {
+            ClientState::Connected(conn) => Ok(Async::Ready(conn.clone())),
+            ClientState::Connecting(ref mut f) => {
+                let conn = Arc::new(Mutex::new(try_ready!(f.poll())));
+                *inner_state = ClientState::Connected(conn.clone());
+                Ok(Async::Ready(conn.clone()))
             }
             ClientState::Disconnected => {
-                *inner_state = ClientState::Connecting(Connection::new(/*TODO*/));
+                let conn_fut =
+                    Connection::connect(&self.options.address, self.options.connect_timeout_ms);
+                *inner_state = ClientState::Connecting(Box::new(conn_fut));
                 Ok(Async::NotReady)
             }
         }
@@ -71,9 +63,7 @@ pub struct ClientOptions {
 impl Client {
     pub fn new(options: &ClientOptions) -> Self {
         Client {
-            state: ClientInnerState {
-                inner: Arc::new(Mutex::new(ClientState::Disconnected)),
-            },
+            state: Arc::new(Mutex::new(ClientState::Disconnected)),
             options: options.clone(),
         }
     }
@@ -95,9 +85,13 @@ impl Client {
     //     }
     // }
 
-    pub fn send_events(&self, events: Vec<Event>) -> impl Future<Item = Msg, Error = io::Error> {
+    pub fn send_events(
+        &mut self,
+        events: Vec<Event>,
+    ) -> impl Future<Item = Msg, Error = io::Error> {
         // TODO: on error
-        self.state
-            .and_then(|conn| conn.send_events(&events, self.options.socket_timeout_ms))
+        // FIXME:
+        let timeout = self.options.socket_timeout_ms;
+        self.and_then(|conn| conn.lock().unwrap().send_events(&events, timeout))
     }
 }
