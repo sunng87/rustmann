@@ -88,10 +88,9 @@ impl Client {
     pub fn send_events(
         &mut self,
         events: Vec<Event>,
-    ) -> impl Future<Item = Msg, Error = io::Error> {
+    ) -> impl Future<Item = Msg, Error = io::Error> + '_ {
         // TODO: on error
-        // FIXME:
         let timeout = self.options.socket_timeout_ms;
-        self.and_then(|conn| conn.lock().unwrap().send_events(&events, timeout))
+        self.and_then(move |conn| conn.lock().unwrap().send_events(&events, timeout))
     }
 }

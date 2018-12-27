@@ -24,7 +24,7 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub fn connect(
+    pub(crate) fn connect(
         addr: &SocketAddr,
         connect_timeout_ms: u64,
     ) -> impl Future<Item = Connection, Error = io::Error> {
@@ -68,7 +68,7 @@ impl Connection {
             })
     }
 
-    pub fn send_events(
+    pub(crate) fn send_events(
         &mut self,
         events: &Vec<Event>,
         socket_timeout: u64,
