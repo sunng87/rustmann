@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::io;
 use std::net::SocketAddr;
 use std::ops::DerefMut;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use derive_builder::Builder;
@@ -58,6 +59,16 @@ pub struct ClientOptions {
     address: SocketAddr,
     connect_timeout_ms: u64,
     socket_timeout_ms: u64,
+}
+
+impl Default for ClientOptions {
+    fn default() -> ClientOptions {
+        ClientOptions {
+            address: SocketAddr::from_str("127.0.0.1:5555").unwrap(),
+            connect_timeout_ms: 2000,
+            socket_timeout_ms: 3000,
+        }
+    }
 }
 
 impl Client {

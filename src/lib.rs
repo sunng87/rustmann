@@ -10,4 +10,4 @@ mod codec;
 mod connection;
 pub mod protos;
 
-pub use crate::client::Client;
+pub use crate::client::{Client, ClientOptions, ClientOptionsBuilder};
