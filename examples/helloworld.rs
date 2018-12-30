@@ -4,7 +4,7 @@ use futures::Future;
 
 use protobuf::Chars;
 use rustmann::protos::riemann::Event;
-use rustmann::{Client, ClientOptions, ClientOptionsBuilder};
+use rustmann::{Client, ClientOptions};
 
 fn main() -> Result<(), Box<Error>> {
     let client = Client::new(&ClientOptions::default());
