@@ -75,7 +75,6 @@ impl Client {
         &mut self,
         events: Vec<Event>,
     ) -> impl Future<Item = Msg, Error = io::Error> + '_ {
-        // TODO: on error
         let timeout = self.options.socket_timeout_ms;
         let state = self.state.clone();
         self.and_then(move |conn| conn.lock().unwrap().send_events(&events, timeout))
