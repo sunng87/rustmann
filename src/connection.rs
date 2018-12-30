@@ -1,5 +1,4 @@
 use std::io;
-use std::mem;
 use std::net::SocketAddr;
 use std::time::Duration;
 
