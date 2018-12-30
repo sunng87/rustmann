@@ -71,23 +71,6 @@ impl Client {
         }
     }
 
-    // // a private method to get or create a connection
-    // // this implement would block the thread
-    // fn get_connection(&mut self) -> Result<MutexGuard<Option<Connection>>, io::Error> {
-    //     let conn = self.connection.clone();
-
-    //     let conn_opt = conn.lock().unwrap();
-    //     if conn_opt.is_some() {
-    //         Ok(conn_opt)
-    //     } else {
-    //         let new_conn =
-    //             Connection::connect(&self.options.address, self.options.connect_timeout_ms)
-    //                 .wait()?;
-    //         *conn_opt = Some(new_conn);
-    //         Ok(conn_opt)
-    //     }
-    // }
-
     pub fn send_events(
         &mut self,
         events: Vec<Event>,
