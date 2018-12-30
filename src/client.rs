@@ -1,22 +1,14 @@
-use std::borrow::Borrow;
 use std::io;
 use std::net::SocketAddr;
 use std::ops::DerefMut;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 
 use derive_builder::Builder;
-use futures::future::{self, Either, Loop};
-use futures::sync::mpsc;
-use futures::sync::oneshot::{self, Sender};
-use futures::{try_ready, Async, Future, Poll, Sink, Stream};
-use tokio;
+use futures::{try_ready, Async, Future, Poll};
 
 use crate::connection::Connection;
 use crate::protos::riemann::{Event, Msg};
-
-pub type RustmannResult = Result<Msg, io::Error>;
-pub type RustmannFuture = Box<dyn Future<Item = Msg, Error = io::Error>>;
 
 pub struct Client {
     // connection: Arc<Mutex<Option<Connection>>>,
