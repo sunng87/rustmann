@@ -102,6 +102,11 @@ impl Client {
     ) -> impl Future<Item = Msg, Error = io::Error> + '_ {
         // TODO: on error
         let timeout = self.options.socket_timeout_ms;
+        let state = self.state.clone();
         self.and_then(move |conn| conn.lock().unwrap().send_events(&events, timeout))
+            .map_err(move |e| {
+                *state.lock().unwrap() = ClientState::Disconnected;
+                e
+            })
     }
 }
