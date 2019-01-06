@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::ops::DerefMut;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+//use std::future::{Future, Poll};
 
 use derive_builder::Builder;
 use futures::{try_ready, Async, Future, Poll};
@@ -63,17 +64,6 @@ impl Default for ClientOptions {
     }
 }
 
-pub struct RustmannFuture<'a>(Box<Future<Item = Msg, Error = io::Error> + Send + 'a>);
-
-impl<'a> Future for RustmannFuture<'a> {
-    type Item = Msg;
-    type Error = io::Error;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        self.0.poll()
-    }
-}
-
 impl Client {
     pub fn new(options: &ClientOptions) -> Self {
         Client {
@@ -82,15 +72,16 @@ impl Client {
         }
     }
 
-    pub fn send_events<'a>(&'a mut self, events: Vec<Event>) -> RustmannFuture<'a> {
+    pub async fn send_events(&mut self, events: Vec<Event>) -> Result<Msg, io::Error> {
         let timeout = self.options.socket_timeout_ms;
         let state = self.state.clone();
-        let f = self
-            .and_then(move |conn| conn.lock().unwrap().send_events(&events, timeout))
+
+        let conn = await!(self)?;
+
+        await!(conn.lock().unwrap().send_events(&events, timeout))
             .map_err(move |e| {
                 *state.lock().unwrap() = ClientState::Disconnected;
                 e
-            });
-        RustmannFuture(Box::new(f))
+            })
     }
 }

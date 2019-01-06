@@ -1,9 +1,4 @@
-// extern crate bytes;
-// extern crate futures;
-// extern crate protobuf;
-// extern crate tokio;
-// #[macro_use]
-// extern crate derive_builder;
+#![feature(await_macro, async_await, futures_api)]
 
 mod client;
 mod codec;
