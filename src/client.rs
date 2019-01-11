@@ -32,17 +32,20 @@ impl Future for Client {
         match inner_state.deref_mut() {
             ClientState::Connected(conn) => Ok(Async::Ready(conn.clone())),
             ClientState::Connecting(ref mut f) => {
-                println!("connecting");
                 let conn = Arc::new(Mutex::new(try_ready!(f.poll())));
                 *inner_state = ClientState::Connected(conn.clone());
                 Ok(Async::Ready(conn.clone()))
             }
             ClientState::Disconnected => {
-                println!("disconnected");
-                let conn_fut =
-                    Connection::connect(&self.options.address, self.options.connect_timeout_ms);
-                *inner_state = ClientState::Connecting(Box::new(conn_fut));
-                Ok(Async::NotReady)
+                let mut f = Connection::connect(&self.options.address, self.options.connect_timeout_ms);
+                if let Async::Ready(conn) = f.poll()? {
+                    let conn_wrapper = Arc::new(Mutex::new(conn));
+                    *inner_state = ClientState::Connected(conn_wrapper.clone());
+                    Ok(Async::Ready(conn_wrapper.clone()))
+                } else {
+                    *inner_state = ClientState::Connecting(Box::new(f));
+                    Ok(Async::NotReady)
+                }
             }
         }
     }
