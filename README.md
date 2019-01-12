@@ -1,7 +1,7 @@
 # rustmann
 
 [![Crates.io](https://img.shields.io/crates/v/rustmann.svg)](https://crates.io/crates/rustmann)
-[![Docs](https://docs.rs/handlebars/badge.svg)](https://docs.rs/crate/handlebars/)
+[![Docs](https://docs.rs/rustmann/badge.svg)](https://docs.rs/crate/rustmann/)
 [![Build Status](https://travis-ci.org/sunng87/rustmann.svg?branch=master)](https://travis-ci.org/sunng87/rustmann)
 ![GitHub](https://img.shields.io/github/license/sunng87/rustmann.svg)
 [![Donate](https://img.shields.io/badge/donate-liberapay-yellow.svg)](https://liberapay.com/Sunng/donate)
