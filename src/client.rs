@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 //use std::future::{Future, Poll};
 
 use derive_builder::Builder;
-use futures::{try_ready, Async, Future, Poll};
+use futures::{Async, Future, Poll};
 
 use crate::connection::Connection;
 use crate::protos::riemann::{Event, Msg};
@@ -31,11 +31,24 @@ impl Future for Client {
         let mut inner_state = self.state.lock().unwrap();
         match inner_state.deref_mut() {
             ClientState::Connected(conn) => Ok(Async::Ready(conn.clone())),
-            ClientState::Connecting(ref mut f) => {
-                let conn = Arc::new(Mutex::new(try_ready!(f.poll())));
-                *inner_state = ClientState::Connected(conn.clone());
-                Ok(Async::Ready(conn.clone()))
-            }
+            ClientState::Connecting(ref mut f) =>
+                match f.poll() {
+                    Ok(Async::Ready(conn)) => {
+                        // connected
+                        let conn = Arc::new(Mutex::new(conn));
+                        *inner_state = ClientState::Connected(conn.clone());
+                        Ok(Async::Ready(conn.clone()))
+                    }
+                    Ok(Async::NotReady) => {
+                        // still connecting
+                        Ok(Async::NotReady)
+                    }
+                    Err(e) => {
+                        // failed to connect, reset to disconnected
+                        *inner_state = ClientState::Disconnected;
+                        Err(e)
+                    }
+                }
             ClientState::Disconnected => {
                 let mut f = Connection::connect(&self.options.address, self.options.connect_timeout_ms);
                 if let Async::Ready(conn) = f.poll()? {
