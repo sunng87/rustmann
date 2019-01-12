@@ -10,7 +10,7 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-tokio = "0.1.8"
+tokio = {version = "0.1.0", features = ["async-await-preview"]}
 futures = "0.1"
 protobuf = { version = "2", features = ["with-bytes"] }
 bytes = "0.4"

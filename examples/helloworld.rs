@@ -1,10 +1,11 @@
-use std::error::Error;
+#![feature(await_macro, async_await, futures_api)]
 
-use futures::Future;
+use std::error::Error;
 
 use protobuf::Chars;
 use rustmann::protos::riemann::Event;
 use rustmann::{Client, ClientOptions};
+use tokio::await;
 
 fn main() -> Result<(), Box<Error>> {
     let mut client = Client::new(&ClientOptions::default());
@@ -12,14 +13,12 @@ fn main() -> Result<(), Box<Error>> {
     let mut event = Event::new();
     event.set_service(Chars::from("test"));
 
-    let f = client
-        .send_events(vec![event])
-        .and_then(|r| {
-            println!("{:?}", r);
-            Ok(())
-        })
-        .map_err(|e| eprintln!("{:?}", e));
+    tokio::run_async(
+        async move {
+            let response = await!(client.send_events(vec![event]));
 
-    tokio::run(f);
+            println!("{:?}", response);
+        },
+    );
     Ok(())
 }
