@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use derive_builder::Builder;
 use futures::{Async, Future, Poll};
+use tokio::await;
 
 use crate::connection::Connection;
 use crate::protos::riemann::{Event, Msg};

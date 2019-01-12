@@ -1,10 +1,8 @@
 #![feature(await_macro, async_await, futures_api)]
 
-#[macro_use]
-extern crate tokio;
-
 use std::error::Error;
 
+use tokio::await;
 use tokio::codec::{FramedRead, LinesCodec};
 use tokio::io::stdin;
 use tokio::prelude::*;

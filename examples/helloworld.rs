@@ -1,13 +1,11 @@
 #![feature(await_macro, async_await, futures_api)]
 
-#[macro_use]
-extern crate tokio;
-
 use std::error::Error;
 
 use protobuf::Chars;
 use rustmann::protos::riemann::Event;
 use rustmann::{Client, ClientOptions};
+use tokio::await;
 
 fn main() -> Result<(), Box<Error>> {
     let mut client = Client::new(&ClientOptions::default());
