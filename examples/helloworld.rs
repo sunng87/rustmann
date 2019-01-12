@@ -15,10 +15,12 @@ fn main() -> Result<(), Box<Error>> {
     let mut event = Event::new();
     event.set_service(Chars::from("test"));
 
-    tokio::run_async(async move {
-        let response = await!(client.send_events(vec![event]));
+    tokio::run_async(
+        async move {
+            let response = await!(client.send_events(vec![event]));
 
-        println!("{:?}", response);
-    });
+            println!("{:?}", response);
+        },
+    );
     Ok(())
 }

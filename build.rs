@@ -1,9 +1,9 @@
 extern crate protoc_rust;
 
 use std::env;
-use std::path::Path;
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 
 use protoc_rust::Customize;
 
@@ -19,7 +19,7 @@ fn main() {
             ..Default::default()
         },
     })
-        .expect("protoc");
+    .expect("protoc");
 
     // Create mod.rs accordingly
     let mod_file_content = ["protos/riemann.proto"]

@@ -31,26 +31,26 @@ impl Future for Client {
         let mut inner_state = self.state.lock().unwrap();
         match inner_state.deref_mut() {
             ClientState::Connected(conn) => Ok(Async::Ready(conn.clone())),
-            ClientState::Connecting(ref mut f) =>
-                match f.poll() {
-                    Ok(Async::Ready(conn)) => {
-                        // connected
-                        let conn = Arc::new(Mutex::new(conn));
-                        *inner_state = ClientState::Connected(conn.clone());
-                        Ok(Async::Ready(conn.clone()))
-                    }
-                    Ok(Async::NotReady) => {
-                        // still connecting
-                        Ok(Async::NotReady)
-                    }
-                    Err(e) => {
-                        // failed to connect, reset to disconnected
-                        *inner_state = ClientState::Disconnected;
-                        Err(e)
-                    }
+            ClientState::Connecting(ref mut f) => match f.poll() {
+                Ok(Async::Ready(conn)) => {
+                    // connected
+                    let conn = Arc::new(Mutex::new(conn));
+                    *inner_state = ClientState::Connected(conn.clone());
+                    Ok(Async::Ready(conn.clone()))
                 }
+                Ok(Async::NotReady) => {
+                    // still connecting
+                    Ok(Async::NotReady)
+                }
+                Err(e) => {
+                    // failed to connect, reset to disconnected
+                    *inner_state = ClientState::Disconnected;
+                    Err(e)
+                }
+            },
             ClientState::Disconnected => {
-                let mut f = Connection::connect(&self.options.address, self.options.connect_timeout_ms);
+                let mut f =
+                    Connection::connect(&self.options.address, self.options.connect_timeout_ms);
                 if let Async::Ready(conn) = f.poll()? {
                     let conn_wrapper = Arc::new(Mutex::new(conn));
                     *inner_state = ClientState::Connected(conn_wrapper.clone());
@@ -96,10 +96,9 @@ impl Client {
 
         let conn = await!(self)?;
 
-        await!(conn.lock().unwrap().send_events(&events, timeout))
-            .map_err(move |e| {
-                *state.lock().unwrap() = ClientState::Disconnected;
-                e
-            })
+        await!(conn.lock().unwrap().send_events(&events, timeout)).map_err(move |e| {
+            *state.lock().unwrap() = ClientState::Disconnected;
+            e
+        })
     }
 }
