@@ -87,7 +87,7 @@ impl Client {
     pub fn new(options: &ClientOptions) -> Self {
         Client {
             state: Arc::new(Mutex::new(ClientState::Disconnected)),
-            options: options.clone(),
+            options: *options,
         }
     }
 

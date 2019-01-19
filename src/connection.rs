@@ -69,7 +69,7 @@ impl Connection {
 
     pub(crate) fn send_events(
         &mut self,
-        events: &Vec<Event>,
+        events: &[Event],
         socket_timeout: u64,
     ) -> impl Future<Item = Msg, Error = io::Error> {
         let mut msg = Msg::new();
