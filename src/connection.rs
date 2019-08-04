@@ -2,11 +2,11 @@ use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use futures::future;
-use futures::stream::SplitSink;
-use futures::sync::mpsc::{self, UnboundedSender};
-use futures::sync::oneshot::{self, Sender};
-use futures::{Future, Sink, Stream};
+use futures_legacy::future;
+use futures_legacy::stream::SplitSink;
+use futures_legacy::sync::mpsc::{self, UnboundedSender};
+use futures_legacy::sync::oneshot::{self, Sender};
+use futures_legacy::{Future, Sink, Stream};
 use protobuf::RepeatedField;
 use tokio::codec::Framed;
 use tokio::net::TcpStream;

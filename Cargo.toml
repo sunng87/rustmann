@@ -10,8 +10,9 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-tokio = {version = "0.1.18", features = ["async-await-preview"]}
-futures = "0.1"
+tokio = {version = "0.1.22"}
+futures-legacy = { version = "0.1.28", package = "futures" }
+futures-preview = { version = "0.3.0-alpha.17", features = ["compat"] }
 protobuf = { version = "2", features = ["with-bytes"] }
 bytes = "0.4"
 derive_builder = "0.7.0"
