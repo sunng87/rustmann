@@ -6,21 +6,21 @@ use std::sync::{Arc, Mutex};
 //use std::future::{Future, Poll};
 
 use derive_builder::Builder;
-use futures::{Async, Future, Poll};
-use tokio::await;
+use futures::compat::Future01CompatExt;
+use futures_legacy::{Async, Future, Poll};
 
 use crate::connection::Connection;
 use crate::protos::riemann::{Event, Msg};
 
+#[derive(Clone)]
 pub struct Client {
-    // connection: Arc<Mutex<Option<Connection>>>,
     options: ClientOptions,
     state: Arc<Mutex<ClientState>>,
 }
 
 enum ClientState {
     Connected(Arc<Mutex<Connection>>),
-    Connecting(Box<Future<Item = Connection, Error = io::Error> + Send>),
+    Connecting(Box<dyn Future<Item = Connection, Error = io::Error> + Send>),
     Disconnected,
 }
 
@@ -95,11 +95,16 @@ impl Client {
         let timeout = self.options.socket_timeout_ms;
         let state = self.state.clone();
 
-        let conn = await!(self)?;
+        let conn = self.compat().await?;
 
-        await!(conn.lock().unwrap().send_events(&events, timeout)).map_err(move |e| {
-            *state.lock().unwrap() = ClientState::Disconnected;
-            e
-        })
+        conn.lock()
+            .unwrap()
+            .send_events(&events, timeout)
+            .compat()
+            .await
+            .map_err(move |e| {
+                *state.lock().unwrap() = ClientState::Disconnected;
+                e
+            })
     }
 }
