@@ -1,13 +1,13 @@
+use std::pin::Pin;
+use std::task::{Context, Poll};
 use std::io;
 use std::net::SocketAddr;
 use std::ops::DerefMut;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-//use std::future::{Future, Poll};
+use std::future::{Future};
 
 use derive_builder::Builder;
-use futures::compat::Future01CompatExt;
-use futures_legacy::{Async, Future, Poll};
 
 use crate::connection::Connection;
 use crate::protos::riemann::{Event, Msg};
@@ -20,28 +20,27 @@ pub struct Client {
 
 enum ClientState {
     Connected(Arc<Mutex<Connection>>),
-    Connecting(Box<dyn Future<Item = Connection, Error = io::Error> + Send>),
+    Connecting(Box<dyn Future<Output=Result<Connection, io::Error>> + Send>),
     Disconnected,
 }
 
 impl Future for Client {
-    type Item = Arc<Mutex<Connection>>;
-    type Error = io::Error;
+    type Output = Result<Arc<Mutex<Connection>>, io::Error>;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let mut inner_state = self.state.lock().unwrap();
         match inner_state.deref_mut() {
-            ClientState::Connected(conn) => Ok(Async::Ready(conn.clone())),
+            ClientState::Connected(conn) => Ok(Poll::Ready(conn.clone())),
             ClientState::Connecting(ref mut f) => match f.poll() {
-                Ok(Async::Ready(conn)) => {
+                Ok(Poll::Ready(conn)) => {
                     // connected
                     let conn = Arc::new(Mutex::new(conn));
                     *inner_state = ClientState::Connected(conn.clone());
-                    Ok(Async::Ready(conn.clone()))
+                    Ok(Poll::Ready(conn.clone()))
                 }
-                Ok(Async::NotReady) => {
+                Ok(Poll::Pending) => {
                     // still connecting
-                    Ok(Async::NotReady)
+                    Ok(Poll::Pending)
                 }
                 Err(e) => {
                     // failed to connect, reset to disconnected
@@ -52,13 +51,13 @@ impl Future for Client {
             ClientState::Disconnected => {
                 let mut f =
                     Connection::connect(&self.options.address, self.options.connect_timeout_ms);
-                if let Async::Ready(conn) = f.poll()? {
+                if let Poll::Ready(conn) = f.poll()? {
                     let conn_wrapper = Arc::new(Mutex::new(conn));
                     *inner_state = ClientState::Connected(conn_wrapper.clone());
-                    Ok(Async::Ready(conn_wrapper.clone()))
+                    Ok(Poll::Ready(conn_wrapper.clone()))
                 } else {
                     *inner_state = ClientState::Connecting(Box::new(f));
-                    Ok(Async::NotReady)
+                    Ok(Poll::Pending)
                 }
             }
         }
@@ -95,12 +94,11 @@ impl Client {
         let timeout = self.options.socket_timeout_ms;
         let state = self.state.clone();
 
-        let conn = self.compat().await?;
+        let conn = self.await?;
 
         conn.lock()
             .unwrap()
             .send_events(&events, timeout)
-            .compat()
             .await
             .map_err(move |e| {
                 *state.lock().unwrap() = ClientState::Disconnected;

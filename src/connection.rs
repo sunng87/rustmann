@@ -2,11 +2,10 @@ use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use futures_legacy::future;
-use futures_legacy::stream::SplitSink;
-use futures_legacy::sync::mpsc::{self, UnboundedSender};
-use futures_legacy::sync::oneshot::{self, Sender};
-use futures_legacy::{Future, Sink, Stream};
+use futures::sink::Sink;
+use futures::stream::{SplitSink};
+use tokio::sync::mpsc::{self, UnboundedSender};
+use tokio::sync::oneshot::{self, Sender};
 use protobuf::RepeatedField;
 use tokio::codec::Framed;
 use tokio::net::TcpStream;
@@ -18,15 +17,14 @@ use crate::protos::riemann::{Event, Msg};
 #[derive(Debug)]
 pub struct Connection {
     sender_queue: UnboundedSender<Sender<Msg>>,
-    socket_sender: SplitSink<Framed<TcpStream, MsgCodec>>,
-    // callback_queue: VecDeque<Sender<Msg>>,
+    socket_sender: SplitSink<Framed<TcpStream, MsgCodec>, Msg>,
 }
 
 impl Connection {
-    pub(crate) fn connect(
+    pub(crate) async fn connect(
         addr: &SocketAddr,
         connect_timeout_ms: u64,
-    ) -> impl Future<Item = Connection, Error = io::Error> {
+    ) -> Result<Connection, io::Error> {
         TcpStream::connect(addr)
             .timeout(Duration::from_millis(connect_timeout_ms))
             .map_err(|e| {
@@ -42,7 +40,7 @@ impl Connection {
                 let framed = Framed::new(socket, MsgCodec);
                 let (conn_sender, conn_receiver) = framed.split();
 
-                let (cb_queue_tx, cb_queue_rx) = mpsc::unbounded::<Sender<Msg>>();
+                let (cb_queue_tx, cb_queue_rx) = mpsc::unbounded_channel::<Sender<Msg>>();
 
                 let receiver_loop =
                     conn_receiver
@@ -67,26 +65,22 @@ impl Connection {
             })
     }
 
-    pub(crate) fn send_events(
+    pub(crate) async fn send_events(
         &mut self,
         events: &[Event],
         socket_timeout: u64,
-    ) -> impl Future<Item = Msg, Error = io::Error> {
+    ) -> Result<Msg, io::Error> {
         let mut msg = Msg::new();
         msg.set_events(RepeatedField::from_slice(events));
 
         let (tx, rx) = oneshot::channel::<Msg>();
 
-        future::result(
-            self.sender_queue
-                .unbounded_send(tx)
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-                .and_then(|_| {
-                    self.socket_sender
-                        .start_send(msg)
-                        .and_then(|_| self.socket_sender.poll_complete())
-                }),
-        )
+        self.sender_queue
+            .send(tx)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+            .and_then(|_| {
+                self.socket_sender.start_send(msg)
+            })
         .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
         .and_then(move |_| {
             rx.timeout(Duration::from_millis(socket_timeout))
