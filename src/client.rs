@@ -1,15 +1,15 @@
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::ops::DerefMut;
+use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use std::future::Future;
+use std::task::{Context, Poll};
 
 use derive_builder::Builder;
-use futures_util::FutureExt;
 use futures_core::future::BoxFuture;
+use futures_util::FutureExt;
 
 use crate::connection::Connection;
 use crate::protos::riemann::{Event, Msg};
@@ -52,7 +52,8 @@ impl Future for Client {
             },
             ClientState::Disconnected => {
                 let mut f =
-                    Connection::connect(self.options.address, self.options.connect_timeout_ms).boxed();
+                    Connection::connect(self.options.address, self.options.connect_timeout_ms)
+                        .boxed();
                 if let Poll::Ready(Ok(conn)) = f.poll_unpin(cx) {
                     let conn_wrapper = Arc::new(Mutex::new(conn));
                     *inner_state = ClientState::Connected(conn_wrapper.clone());
@@ -99,11 +100,9 @@ impl Client {
         let conn_wrapper = self.await?;
         let mut conn = conn_wrapper.lock().unwrap();
 
-        conn.send_events(&events, timeout)
-            .await
-            .map_err(move |e| {
-                *state.lock().unwrap() = ClientState::Disconnected;
-                e
-            })
+        conn.send_events(&events, timeout).await.map_err(move |e| {
+            *state.lock().unwrap() = ClientState::Disconnected;
+            e
+        })
     }
 }

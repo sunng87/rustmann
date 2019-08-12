@@ -2,14 +2,14 @@ use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use futures_util::{TryFutureExt};
-use futures_util::stream::{SplitSink};
+use futures_util::stream::SplitSink;
+use futures_util::TryFutureExt;
 use protobuf::RepeatedField;
-use tokio::sync::mpsc::{self, UnboundedSender};
-use tokio::sync::oneshot::{self, Sender};
 use tokio::codec::Framed;
 use tokio::net::TcpStream;
 use tokio::prelude::*;
+use tokio::sync::mpsc::{self, UnboundedSender};
+use tokio::sync::oneshot::{self, Sender};
 
 use crate::codec::MsgCodec;
 use crate::protos::riemann::{Event, Msg};
@@ -27,9 +27,7 @@ impl Connection {
     ) -> Result<Connection, io::Error> {
         TcpStream::connect(&addr)
             .timeout(Duration::from_millis(connect_timeout_ms))
-            .map_err(|e| {
-                io::Error::new(io::ErrorKind::TimedOut, e)
-            })
+            .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
             .await?
             .and_then(|socket| {
                 socket.set_nodelay(true)?;
@@ -71,12 +69,20 @@ impl Connection {
 
         let (tx, rx) = oneshot::channel::<Msg>();
 
-        self.sender_queue.send(tx).map_err(|e| io::Error::new(io::ErrorKind::Other, e)).await?;
+        self.sender_queue
+            .send(tx)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+            .await?;
 
-        self.socket_sender.send(msg).map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e)).await?;
+        self.socket_sender
+            .send(msg)
+            .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
+            .await?;
 
-        let result = rx.timeout(Duration::from_millis(socket_timeout))
-            .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e)).await?;
+        let result = rx
+            .timeout(Duration::from_millis(socket_timeout))
+            .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
+            .await?;
 
         result.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
