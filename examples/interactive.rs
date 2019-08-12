@@ -4,6 +4,7 @@ use std::error::Error;
 
 use tokio::codec::{FramedRead, LinesCodec};
 use tokio::io::stdin;
+use tokio::sync::mpsc;
 use tokio::prelude::*;
 
 use protobuf::Chars;
@@ -15,7 +16,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut client = Client::new(&ClientOptions::default());
     let mut input = FramedRead::new(stdin(), LinesCodec::new());
 
-    while let Some(Ok(line)) = input.next().await {
+    let (mut tx, mut rx) = mpsc::unbounded_channel();
+
+    tokio::spawn(async move {
+        tx.send_all(&mut input).await.unwrap();
+    });
+
+    while let Some(Ok(line)) = rx.next().await {
         let mut event = Event::new();
         event.set_host(Chars::from("thinkless"));
         event.set_service(Chars::from("rustmann_interactive"));
