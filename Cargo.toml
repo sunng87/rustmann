@@ -11,7 +11,8 @@ edition = "2018"
 
 [dependencies]
 tokio = {version = "0.2.0-alpha.1"}
-futures-preview = { version = "0.3.0-alpha.17" }
+futures-core-preview = "=0.3.0-alpha.17"
+futures-util-preview = { version = "=0.3.0-alpha.17" }
 protobuf = { version = "2", features = ["with-bytes"] }
 bytes = "0.4"
 derive_builder = "0.7.0"

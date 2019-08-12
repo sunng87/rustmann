@@ -2,11 +2,11 @@ use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use futures::sink::Sink;
-use futures::stream::{SplitSink};
+use futures_util::{TryFutureExt};
+use futures_util::stream::{SplitSink};
+use protobuf::RepeatedField;
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::sync::oneshot::{self, Sender};
-use protobuf::RepeatedField;
 use tokio::codec::Framed;
 use tokio::net::TcpStream;
 use tokio::prelude::*;
@@ -22,40 +22,36 @@ pub struct Connection {
 
 impl Connection {
     pub(crate) async fn connect(
-        addr: &SocketAddr,
+        addr: SocketAddr,
         connect_timeout_ms: u64,
     ) -> Result<Connection, io::Error> {
-        TcpStream::connect(addr)
+        TcpStream::connect(&addr)
             .timeout(Duration::from_millis(connect_timeout_ms))
             .map_err(|e| {
-                if e.is_timer() {
-                    io::Error::new(io::ErrorKind::TimedOut, e)
-                } else {
-                    e.into_inner().unwrap()
-                }
+                io::Error::new(io::ErrorKind::TimedOut, e)
             })
+            .await?
             .and_then(|socket| {
                 socket.set_nodelay(true)?;
 
                 let framed = Framed::new(socket, MsgCodec);
-                let (conn_sender, conn_receiver) = framed.split();
+                let (conn_sender, mut conn_receiver) = framed.split();
+                let (cb_queue_tx, mut cb_queue_rx) = mpsc::unbounded_channel::<Sender<Msg>>();
 
-                let (cb_queue_tx, cb_queue_rx) = mpsc::unbounded_channel::<Sender<Msg>>();
-
-                let receiver_loop =
-                    conn_receiver
-                        .zip(cb_queue_rx.map_err(|_| {
-                            io::Error::new(io::ErrorKind::Other, "callback queue error")
-                        }))
-                        .for_each(move |(frame, cb)| {
-                            cb.send(frame).map_err(|e| {
-                                io::Error::new(
-                                    io::ErrorKind::Other,
-                                    format!("failed to deliver msg to callback {:?}", e),
-                                )
-                            })
-                        })
-                        .map_err(|e| eprintln!("{:?}", e));
+                let receiver_loop = async move {
+                    loop {
+                        let frame = conn_receiver.next().await;
+                        let cb = cb_queue_rx.recv().await;
+                        if let (Some(Ok(frame)), Some(cb)) = (frame, cb) {
+                            let r = cb.send(frame);
+                            if let Err(e) = r {
+                                eprintln!("failed to deliver msg to callback {:?}", e);
+                            }
+                        } else {
+                            eprintln!("failed to deliver msg to callback.");
+                        }
+                    }
+                };
                 tokio::spawn(receiver_loop);
 
                 Ok(Connection {
@@ -75,16 +71,13 @@ impl Connection {
 
         let (tx, rx) = oneshot::channel::<Msg>();
 
-        self.sender_queue
-            .send(tx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-            .and_then(|_| {
-                self.socket_sender.start_send(msg)
-            })
-        .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
-        .and_then(move |_| {
-            rx.timeout(Duration::from_millis(socket_timeout))
-                .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
-        })
+        self.sender_queue.send(tx).map_err(|e| io::Error::new(io::ErrorKind::Other, e)).await?;
+
+        self.socket_sender.send(msg).map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e)).await?;
+
+        let result = rx.timeout(Duration::from_millis(socket_timeout))
+            .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e)).await?;
+
+        result.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
 }

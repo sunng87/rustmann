@@ -5,9 +5,11 @@ use std::net::SocketAddr;
 use std::ops::DerefMut;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use std::future::{Future};
+use std::future::Future;
 
 use derive_builder::Builder;
+use futures_util::FutureExt;
+use futures_core::future::BoxFuture;
 
 use crate::connection::Connection;
 use crate::protos::riemann::{Event, Msg};
@@ -20,7 +22,7 @@ pub struct Client {
 
 enum ClientState {
     Connected(Arc<Mutex<Connection>>),
-    Connecting(Box<dyn Future<Output=Result<Connection, io::Error>> + Send>),
+    Connecting(BoxFuture<'static, Result<Connection, io::Error>>),
     Disconnected,
 }
 
@@ -30,34 +32,34 @@ impl Future for Client {
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let mut inner_state = self.state.lock().unwrap();
         match inner_state.deref_mut() {
-            ClientState::Connected(conn) => Ok(Poll::Ready(conn.clone())),
-            ClientState::Connecting(ref mut f) => match f.poll() {
-                Ok(Poll::Ready(conn)) => {
+            ClientState::Connected(conn) => Poll::Ready(Ok(conn.clone())),
+            ClientState::Connecting(ref mut f) => match f.poll_unpin(cx) {
+                Poll::Ready(Ok(conn)) => {
                     // connected
                     let conn = Arc::new(Mutex::new(conn));
                     *inner_state = ClientState::Connected(conn.clone());
-                    Ok(Poll::Ready(conn.clone()))
+                    Poll::Ready(Ok(conn.clone()))
                 }
-                Ok(Poll::Pending) => {
-                    // still connecting
-                    Ok(Poll::Pending)
-                }
-                Err(e) => {
+                Poll::Ready(Err(e)) => {
                     // failed to connect, reset to disconnected
                     *inner_state = ClientState::Disconnected;
-                    Err(e)
+                    Poll::Ready(Err(e))
+                }
+                Poll::Pending => {
+                    // still connecting
+                    Poll::Pending
                 }
             },
             ClientState::Disconnected => {
                 let mut f =
-                    Connection::connect(&self.options.address, self.options.connect_timeout_ms);
-                if let Poll::Ready(conn) = f.poll()? {
+                    Connection::connect(self.options.address, self.options.connect_timeout_ms).boxed();
+                if let Poll::Ready(Ok(conn)) = f.poll_unpin(cx) {
                     let conn_wrapper = Arc::new(Mutex::new(conn));
                     *inner_state = ClientState::Connected(conn_wrapper.clone());
-                    Ok(Poll::Ready(conn_wrapper.clone()))
+                    Poll::Ready(Ok(conn_wrapper.clone()))
                 } else {
-                    *inner_state = ClientState::Connecting(Box::new(f));
-                    Ok(Poll::Pending)
+                    *inner_state = ClientState::Connecting(f);
+                    Poll::Pending
                 }
             }
         }
@@ -94,11 +96,10 @@ impl Client {
         let timeout = self.options.socket_timeout_ms;
         let state = self.state.clone();
 
-        let conn = self.await?;
+        let conn_wrapper = self.await?;
+        let mut conn = conn_wrapper.lock().unwrap();
 
-        conn.lock()
-            .unwrap()
-            .send_events(&events, timeout)
+        conn.send_events(&events, timeout)
             .await
             .map_err(move |e| {
                 *state.lock().unwrap() = ClientState::Disconnected;
