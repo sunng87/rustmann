@@ -15,8 +15,8 @@ use crate::connection::Connection;
 use crate::protos::riemann::{Event, Msg};
 
 #[derive(Clone)]
-pub struct Client {
-    options: ClientOptions,
+pub struct RiemannClient {
+    options: RiemannClientOptions,
     state: Arc<Mutex<ClientState>>,
 }
 
@@ -26,7 +26,8 @@ enum ClientState {
     Disconnected,
 }
 
-impl Future for Client {
+
+impl Future for RiemannClient {
     type Output = Result<Arc<Mutex<Connection>>, io::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
@@ -69,15 +70,15 @@ impl Future for Client {
 
 #[derive(Debug, Builder, Clone, Copy)]
 #[builder(setter(into))]
-pub struct ClientOptions {
+pub struct RiemannClientOptions {
     address: SocketAddr,
     connect_timeout_ms: u64,
     socket_timeout_ms: u64,
 }
 
-impl Default for ClientOptions {
-    fn default() -> ClientOptions {
-        ClientOptions {
+impl Default for RiemannClientOptions {
+    fn default() -> RiemannClientOptions {
+        Self {
             address: SocketAddr::from_str("127.0.0.1:5555").unwrap(),
             connect_timeout_ms: 2000,
             socket_timeout_ms: 3000,
@@ -85,9 +86,9 @@ impl Default for ClientOptions {
     }
 }
 
-impl Client {
-    pub fn new(options: &ClientOptions) -> Self {
-        Client {
+impl RiemannClient {
+    pub fn new(options: &RiemannClientOptions) -> Self {
+        RiemannClient {
             state: Arc::new(Mutex::new(ClientState::Disconnected)),
             options: *options,
         }

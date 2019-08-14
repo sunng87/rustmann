@@ -9,11 +9,11 @@ use tokio::prelude::*;
 
 use protobuf::Chars;
 use rustmann::protos::riemann::Event;
-use rustmann::{Client, ClientOptions};
+use rustmann::{RiemannClient, RiemannClientOptions};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let mut client = Client::new(&ClientOptions::default());
+    let mut client = RiemannClient::new(&RiemannClientOptions::default());
     let mut input = FramedRead::new(stdin(), LinesCodec::new());
 
     let (mut tx, mut rx) = mpsc::unbounded_channel();
