@@ -16,6 +16,11 @@ use crate::protos::riemann::{Event, Msg};
 
 #[derive(Clone)]
 pub struct RiemannClient {
+    inner: Inner
+}
+
+#[derive(Clone)]
+struct Inner {
     options: RiemannClientOptions,
     state: Arc<Mutex<ClientState>>,
 }
@@ -26,8 +31,7 @@ enum ClientState {
     Disconnected,
 }
 
-
-impl Future for RiemannClient {
+impl Future for Inner {
     type Output = Result<Arc<Mutex<Connection>>, io::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
@@ -89,16 +93,19 @@ impl Default for RiemannClientOptions {
 impl RiemannClient {
     pub fn new(options: &RiemannClientOptions) -> Self {
         RiemannClient {
-            state: Arc::new(Mutex::new(ClientState::Disconnected)),
-            options: *options,
+            inner: Inner {
+                state: Arc::new(Mutex::new(ClientState::Disconnected)),
+                options: *options,
+            }
         }
     }
 
     pub async fn send_events(&mut self, events: Vec<Event>) -> Result<Msg, io::Error> {
-        let timeout = self.options.socket_timeout_ms;
-        let state = self.state.clone();
+        let timeout = self.inner.options.socket_timeout_ms;
+        let state = self.inner.state.clone();
+        let inner = &mut self.inner;
 
-        let conn_wrapper = self.await?;
+        let conn_wrapper = inner.await?;
         let mut conn = conn_wrapper.lock().unwrap();
 
         conn.send_events(&events, timeout).await.map_err(move |e| {
