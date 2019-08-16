@@ -13,7 +13,7 @@ use futures_util::FutureExt;
 use protobuf::Chars;
 
 use crate::connection::Connection;
-use crate::protos::riemann::{Event, Msg, Query};
+use crate::protos::riemann::{Event, Query};
 
 #[derive(Clone)]
 pub struct RiemannClient {
@@ -101,7 +101,7 @@ impl RiemannClient {
         }
     }
 
-    pub async fn send_events(&mut self, events: Vec<Event>) -> Result<Msg, io::Error> {
+    pub async fn send_events(&mut self, events: Vec<Event>) -> Result<bool, io::Error> {
         let timeout = self.inner.options.socket_timeout_ms;
         let state = self.inner.state.clone();
         let inner = &mut self.inner;
@@ -112,7 +112,7 @@ impl RiemannClient {
         conn.send_events(&events, timeout).await.map_err(move |e| {
             *state.lock().unwrap() = ClientState::Disconnected;
             e
-        })
+        }).map(|msg| msg.get_ok())
     }
 
     pub async fn send_query(&mut self, query_string: &str) -> Result<Vec<Event>, io::Error> {
