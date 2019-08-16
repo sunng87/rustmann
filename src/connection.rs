@@ -12,7 +12,7 @@ use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::sync::oneshot::{self, Sender};
 
 use crate::codec::MsgCodec;
-use crate::protos::riemann::{Event, Msg};
+use crate::protos::riemann::{Event, Msg, Query};
 
 #[derive(Debug)]
 pub struct Connection {
@@ -59,14 +59,7 @@ impl Connection {
             })
     }
 
-    pub(crate) async fn send_events(
-        &mut self,
-        events: &[Event],
-        socket_timeout: u64,
-    ) -> Result<Msg, io::Error> {
-        let mut msg = Msg::new();
-        msg.set_events(RepeatedField::from_slice(events));
-
+    async fn send(&mut self, msg: Msg, socket_timeout: u64) -> Result<Msg, io::Error> {
         let (tx, rx) = oneshot::channel::<Msg>();
 
         self.sender_queue
@@ -85,5 +78,27 @@ impl Connection {
             .await?;
 
         result.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+    }
+
+    pub(crate) async fn send_events(
+        &mut self,
+        events: &[Event],
+        socket_timeout: u64,
+    ) -> Result<Msg, io::Error> {
+        let mut msg = Msg::new();
+        msg.set_events(RepeatedField::from_slice(events));
+
+        self.send(msg, socket_timeout).await
+    }
+
+    pub(crate) async fn query(
+        &mut self,
+        query: Query,
+        socket_timeout: u64,
+    ) -> Result<Msg, io::Error> {
+        let mut msg = Msg::new();
+        msg.set_query(query);
+
+        self.send(msg, socket_timeout).await
     }
 }

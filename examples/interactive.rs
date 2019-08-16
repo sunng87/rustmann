@@ -4,8 +4,8 @@ use std::error::Error;
 
 use tokio::codec::{FramedRead, LinesCodec};
 use tokio::io::stdin;
-use tokio::sync::mpsc;
 use tokio::prelude::*;
+use tokio::sync::mpsc;
 
 use protobuf::Chars;
 use rustmann::protos::riemann::Event;

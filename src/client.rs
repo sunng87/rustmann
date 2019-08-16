@@ -10,13 +10,14 @@ use std::task::{Context, Poll};
 use derive_builder::Builder;
 use futures_core::future::BoxFuture;
 use futures_util::FutureExt;
+use protobuf::Chars;
 
 use crate::connection::Connection;
-use crate::protos::riemann::{Event, Msg};
+use crate::protos::riemann::{Event, Msg, Query};
 
 #[derive(Clone)]
 pub struct RiemannClient {
-    inner: Inner
+    inner: Inner,
 }
 
 #[derive(Clone)]
@@ -96,7 +97,7 @@ impl RiemannClient {
             inner: Inner {
                 state: Arc::new(Mutex::new(ClientState::Disconnected)),
                 options: *options,
-            }
+            },
         }
     }
 
@@ -112,5 +113,25 @@ impl RiemannClient {
             *state.lock().unwrap() = ClientState::Disconnected;
             e
         })
+    }
+
+    pub async fn send_query(&mut self, query_string: &str) -> Result<Vec<Event>, io::Error> {
+        let timeout = self.inner.options.socket_timeout_ms;
+        let state = self.inner.state.clone();
+        let inner = &mut self.inner;
+
+        let conn_wrapper = inner.await?;
+        let mut conn = conn_wrapper.lock().unwrap();
+
+        let mut query = Query::new();
+        query.set_string(Chars::from(query_string));
+
+        conn.query(query, timeout)
+            .await
+            .map_err(move |e| {
+                *state.lock().unwrap() = ClientState::Disconnected;
+                e
+            })
+            .map(|msg| Vec::from(msg.get_events()))
     }
 }
