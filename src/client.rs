@@ -92,6 +92,7 @@ impl Default for RiemannClientOptions {
 }
 
 impl RiemannClient {
+    /// Create `RiemannClient` from options.
     pub fn new(options: &RiemannClientOptions) -> Self {
         RiemannClient {
             inner: Inner {
@@ -101,6 +102,7 @@ impl RiemannClient {
         }
     }
 
+    /// Send events to riemann via this client.
     pub async fn send_events(&mut self, events: Vec<Event>) -> Result<bool, io::Error> {
         let timeout = self.inner.options.socket_timeout_ms;
         let state = self.inner.state.clone();
@@ -109,12 +111,16 @@ impl RiemannClient {
         let conn_wrapper = inner.await?;
         let mut conn = conn_wrapper.lock().unwrap();
 
-        conn.send_events(&events, timeout).await.map_err(move |e| {
-            *state.lock().unwrap() = ClientState::Disconnected;
-            e
-        }).map(|msg| msg.get_ok())
+        conn.send_events(&events, timeout)
+            .await
+            .map_err(move |e| {
+                *state.lock().unwrap() = ClientState::Disconnected;
+                e
+            })
+            .map(|msg| msg.get_ok())
     }
 
+    /// Query riemann server by riemann query syntax via this client.
     pub async fn send_query(&mut self, query_string: &str) -> Result<Vec<Event>, io::Error> {
         let timeout = self.inner.options.socket_timeout_ms;
         let state = self.inner.state.clone();
