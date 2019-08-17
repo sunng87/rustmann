@@ -16,6 +16,7 @@ futures-util-preview = "=0.3.0-alpha.18"
 protobuf = { version = "2", features = ["with-bytes"] }
 bytes = "0.4"
 derive_builder = "0.7.0"
+failure = "0.1"
 
 [build-dependencies]
 protoc-rust = "2"
