@@ -42,11 +42,13 @@ impl Connection {
                         let cb = cb_queue_rx.recv().await;
                         if let (Some(Ok(frame)), Some(cb)) = (frame, cb) {
                             let r = cb.send(frame);
-                            if let Err(e) = r {
-                                eprintln!("failed to deliver msg to callback {:?}", e);
+                            if let Err(_) = r {
+                                // eprintln!("failed to deliver msg to callback {:?}", e);
+                                break;
                             }
                         } else {
-                            eprintln!("failed to deliver msg to callback.");
+                            // eprintln!("failed to deliver msg to callback.");
+                            break;
                         }
                     }
                 };
@@ -72,12 +74,10 @@ impl Connection {
             .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
             .await?;
 
-        let result = rx
+        rx
             .timeout(Duration::from_millis(socket_timeout))
+            .await?
             .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
-            .await?;
-
-        result.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
 
     pub(crate) async fn send_events(
