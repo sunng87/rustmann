@@ -1,7 +1,5 @@
 #![feature(async_await)]
 
-use std::error::Error;
-
 use tokio::codec::{FramedRead, LinesCodec};
 use tokio::io::stdin;
 use tokio::prelude::*;
@@ -9,10 +7,10 @@ use tokio::sync::mpsc;
 
 use protobuf::Chars;
 use rustmann::protos::riemann::Event;
-use rustmann::{RiemannClient, RiemannClientOptions};
+use rustmann::{RiemannClient, RiemannClientOptions, RiemannClientError};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), RiemannClientError> {
     let mut client = RiemannClient::new(&RiemannClientOptions::default());
     let mut input = FramedRead::new(stdin(), LinesCodec::new());
 

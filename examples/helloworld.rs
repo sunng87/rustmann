@@ -1,13 +1,11 @@
 #![feature(async_await)]
 
-use std::error::Error;
-
 use protobuf::Chars;
 use rustmann::protos::riemann::Event;
-use rustmann::{RiemannClient, RiemannClientOptions};
+use rustmann::{RiemannClient, RiemannClientOptions, RiemannClientError};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), RiemannClientError> {
     let mut client = RiemannClient::new(&RiemannClientOptions::default());
 
     let mut event = Event::new();
