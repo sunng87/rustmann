@@ -8,12 +8,12 @@
 
 A [riemann](https://riemann.io/) client using
 [tokio](https://tokio.rs). This project is still in its early
-stage and API changes aggressively. Note that this library is written
-in async/await style (due to [async borrow
-issue](http://aturon.github.io/2018/04/24/async-borrowing/)) so for
-now it compiles on nightly rust only.
+stage and API changes aggressively.
 
-From 0.3, this library is rebased to tokio 0.2 and `std::future`.
+## Minimal version policy
+
+This library relies heavily on async-await feature so it requires Rust
+1.39 and above to compile.
 
 ## Usage
 
