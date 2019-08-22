@@ -13,6 +13,7 @@ use futures_util::FutureExt;
 use protobuf::Chars;
 
 use crate::connection::Connection;
+use crate::error::RiemannClientError;
 use crate::protos::riemann::{Event, Query};
 
 #[derive(Clone)]
@@ -33,7 +34,7 @@ enum ClientState {
 }
 
 impl Future for Inner {
-    type Output = Result<Arc<Mutex<Connection>>, io::Error>;
+    type Output = Result<Arc<Mutex<Connection>>, RiemannClientError>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let mut inner_state = self.state.lock().unwrap();
@@ -49,7 +50,7 @@ impl Future for Inner {
                 Poll::Ready(Err(e)) => {
                     // failed to connect, reset to disconnected
                     *inner_state = ClientState::Disconnected;
-                    Poll::Ready(Err(e))
+                    Poll::Ready(Err(RiemannClientError::from(e)))
                 }
                 Poll::Pending => {
                     // still connecting
@@ -103,7 +104,7 @@ impl RiemannClient {
     }
 
     /// Send events to riemann via this client.
-    pub async fn send_events(&mut self, events: Vec<Event>) -> Result<bool, io::Error> {
+    pub async fn send_events(&mut self, events: Vec<Event>) -> Result<bool, RiemannClientError> {
         let timeout = self.inner.options.socket_timeout_ms;
         let state = self.inner.state.clone();
         let inner = &mut self.inner;
@@ -118,10 +119,11 @@ impl RiemannClient {
                 e
             })
             .map(|msg| msg.get_ok())
+            .map_err(RiemannClientError::from)
     }
 
     /// Query riemann server by riemann query syntax via this client.
-    pub async fn send_query(&mut self, query_string: &str) -> Result<Vec<Event>, io::Error> {
+    pub async fn send_query(&mut self, query_string: &str) -> Result<Vec<Event>, RiemannClientError> {
         let timeout = self.inner.options.socket_timeout_ms;
         let state = self.inner.state.clone();
         let inner = &mut self.inner;
@@ -139,5 +141,6 @@ impl RiemannClient {
                 e
             })
             .map(|msg| Vec::from(msg.get_events()))
+            .map_err(RiemannClientError::from)
     }
 }
