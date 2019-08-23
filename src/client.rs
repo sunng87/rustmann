@@ -1,4 +1,5 @@
 use std::future::Future;
+use std::net::SocketAddr;
 use std::io;
 use std::ops::DerefMut;
 use std::pin::Pin;
@@ -22,6 +23,7 @@ pub struct RiemannClient {
 #[derive(Clone)]
 struct Inner {
     options: RiemannClientOptions,
+    socket_addr: SocketAddr,
     state: Arc<Mutex<ClientState>>,
 }
 
@@ -57,8 +59,9 @@ impl Future for Inner {
             },
             ClientState::Disconnected => {
                 let mut f = Connection::connect(
-                    self.options.address().clone(),
+                    self.socket_addr,
                     *self.options.connect_timeout_ms(),
+                    *self.options.use_tls(),
                 )
                 .boxed();
                 if let Poll::Ready(Ok(conn)) = f.poll_unpin(cx) {
@@ -76,13 +79,15 @@ impl Future for Inner {
 
 impl RiemannClient {
     /// Create `RiemannClient` from options.
-    pub fn new(options: &RiemannClientOptions) -> Self {
-        RiemannClient {
+    pub fn new(options: &RiemannClientOptions) -> Result<Self, RiemannClientError> {
+        let addr = options.to_socket_addr()?;
+        Ok(RiemannClient {
             inner: Inner {
                 state: Arc::new(Mutex::new(ClientState::Disconnected)),
-                options: *options,
+                options: options.clone(),
+                socket_addr: addr,
             },
-        }
+        })
     }
 
     /// Send events to riemann via this client.
