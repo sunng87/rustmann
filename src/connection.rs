@@ -11,6 +11,8 @@ use tokio::prelude::*;
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::sync::oneshot::{self, Sender};
 
+use tokio_rustls::TlsConnector;
+
 use crate::codec::MsgCodec;
 use crate::protos::riemann::{Event, Msg, Query};
 
@@ -24,11 +26,19 @@ impl Connection {
     pub(crate) async fn connect(
         addr: SocketAddr,
         connect_timeout_ms: u64,
+        use_tls: bool,
     ) -> Result<Connection, io::Error> {
         TcpStream::connect(&addr)
             .timeout(Duration::from_millis(connect_timeout_ms))
             .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
             .await?
+            .and_then(|socket| {
+                if use_tls {
+                    TlsConnector::connect(socket, )
+                } else {
+                    Ok(socket)
+                }
+            })
             .and_then(|socket| {
                 socket.set_nodelay(true)?;
 
@@ -74,8 +84,7 @@ impl Connection {
             .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
             .await?;
 
-        rx
-            .timeout(Duration::from_millis(socket_timeout))
+        rx.timeout(Duration::from_millis(socket_timeout))
             .await?
             .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
     }

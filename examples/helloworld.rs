@@ -2,7 +2,7 @@
 
 use protobuf::Chars;
 use rustmann::protos::riemann::Event;
-use rustmann::{RiemannClient, RiemannClientOptions, RiemannClientError};
+use rustmann::{RiemannClient, RiemannClientError, RiemannClientOptions};
 
 #[tokio::main]
 async fn main() -> Result<(), RiemannClientError> {
