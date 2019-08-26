@@ -10,16 +10,25 @@ A [riemann](https://riemann.io/) client using
 [tokio](https://tokio.rs). This project is still in its early
 stage and API changes aggressively.
 
-## Minimal version policy
-
-This library relies heavily on async-await feature so it requires Rust
-1.39 and above to compile.
-
 ## Usage
 
 See
 [examples](https://github.com/sunng87/rustmann/tree/master/examples)
 and [API docs](https://docs.rs/crate/rustmann/).
+
+## Features & TODOs
+
+- [x] TCP Client
+- [ ] TLS TCP Client *WIP*
+- [ ] UDP Client
+- [x] Report API (`send_events`)
+- [x] Query API (`send_query`)
+- [ ] Event Builder API
+
+## Minimal version policy
+
+This library relies heavily on async-await feature so it requires Rust
+1.39 and above to compile.
 
 ## License
 
