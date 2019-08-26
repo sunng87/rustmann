@@ -1,6 +1,6 @@
 use std::future::Future;
-use std::net::SocketAddr;
 use std::io;
+use std::net::SocketAddr;
 use std::ops::DerefMut;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
