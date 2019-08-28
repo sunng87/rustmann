@@ -60,8 +60,7 @@ impl Future for Inner {
             ClientState::Disconnected => {
                 let mut f = Connection::connect(
                     self.socket_addr,
-                    *self.options.connect_timeout_ms(),
-                    *self.options.use_tls(),
+                    self.options.clone(),
                 )
                 .boxed();
                 if let Poll::Ready(Ok(conn)) = f.poll_unpin(cx) {

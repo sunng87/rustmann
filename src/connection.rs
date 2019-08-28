@@ -32,26 +32,26 @@ pub(crate) enum Connection {
 #[derive(Debug)]
 pub(crate) struct ConnectionInner<S>
 where
-    S: AsyncRead + AsyncWrite,
+    S: AsyncRead + AsyncWrite + Unpin,
 {
     sender_queue: UnboundedSender<Sender<Msg>>,
     socket_sender: SplitSink<Framed<S, MsgCodec>, Msg>,
 }
 
-impl<S> ConnectionInner<S> {
+impl<S: AsyncRead + AsyncWrite + Unpin> ConnectionInner<S> {
     fn sender_queue_mut(&mut self) -> &mut UnboundedSender<Sender<Msg>> {
-        self.sender_queue
+        &mut self.sender_queue
     }
 
     fn socket_sender_mut(&mut self) -> &mut SplitSink<Framed<S, MsgCodec>, Msg> {
-        self.socket_sender
+        &mut self.socket_sender
     }
 }
 
 impl Connection {
     pub(crate) async fn connect(
         addr: SocketAddr,
-        options: &RiemannClientOptions,
+        options: RiemannClientOptions,
     ) -> Result<Connection, io::Error> {
         if *options.use_tls() {
             Self::connect_tls(addr, options).await
@@ -62,7 +62,7 @@ impl Connection {
 
     async fn connect_plain(
         addr: SocketAddr,
-        options: &RiemannClientOptions,
+        options: RiemannClientOptions,
     ) -> Result<Connection, io::Error> {
         TcpStream::connect(&addr)
             .timeout(Duration::from_millis(*options.connect_timeout_ms()))
@@ -102,7 +102,7 @@ impl Connection {
 
     async fn connect_tls(
         addr: SocketAddr,
-        options: &RiemannClientOptions,
+        options: RiemannClientOptions,
     ) -> Result<Connection, io::Error> {
         TcpStream::connect(&addr)
             .timeout(Duration::from_millis(*options.connect_timeout_ms()))
@@ -111,7 +111,7 @@ impl Connection {
             .and_then(|socket| {
                 socket.set_nodelay(true)?;
 
-                let tls_config = ClientConfig::new();
+                let mut tls_config = ClientConfig::new();
                 tls_config
                     .root_store
                     .add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
@@ -155,15 +155,30 @@ impl Connection {
     async fn send(&mut self, msg: Msg, socket_timeout: u64) -> Result<Msg, io::Error> {
         let (tx, rx) = oneshot::channel::<Msg>();
 
-        self.sender_queue()
-            .send(tx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-            .await?;
+        match self {
+            Connection::PLAIN(ref mut inner) => {
+                inner.sender_queue_mut()
+                    .send(tx)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+                    .await?;
 
-        self.socket_sender()
-            .send(msg)
-            .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
-            .await?;
+                inner.socket_sender_mut()
+                    .send(msg)
+                    .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
+                    .await?;
+            },
+            Connection::TLS(ref mut inner) => {
+                inner.sender_queue_mut()
+                    .send(tx)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+                    .await?;
+
+                inner.socket_sender_mut()
+                    .send(msg)
+                    .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
+                    .await?;
+            }
+        }
 
         rx.timeout(Duration::from_millis(socket_timeout))
             .await?
