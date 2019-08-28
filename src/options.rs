@@ -24,7 +24,7 @@ impl Default for RiemannClientOptions {
             port: 5555,
             connect_timeout_ms: 2000,
             socket_timeout_ms: 3000,
-            use_tls: true,
+            use_tls: false,
             client_cert: None,
         }
     }
@@ -33,7 +33,7 @@ impl Default for RiemannClientOptions {
 impl RiemannClientOptions {
     // FIXME: async
     pub(crate) fn to_socket_addr(&self) -> Result<SocketAddr, io::Error> {
-        format!("{}:{}", self.host(), self.port())
+        (self.host().as_str(), *self.port())
             .to_socket_addrs()
             .and_then(|mut i| {
                 i.next().ok_or_else(|| {
