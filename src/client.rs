@@ -58,11 +58,7 @@ impl Future for Inner {
                 }
             },
             ClientState::Disconnected => {
-                let mut f = Connection::connect(
-                    self.socket_addr,
-                    self.options.clone(),
-                )
-                .boxed();
+                let mut f = Connection::connect(self.socket_addr, self.options.clone()).boxed();
                 if let Poll::Ready(Ok(conn)) = f.poll_unpin(cx) {
                     let conn_wrapper = Arc::new(Mutex::new(conn));
                     *inner_state = ClientState::Connected(conn_wrapper.clone());

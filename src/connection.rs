@@ -60,7 +60,10 @@ impl Connection {
         }
     }
 
-    fn setup_conn<S>(socket: S) -> ConnectionInner<S> where S: AsyncRead + AsyncWrite + Unpin + Send {
+    fn setup_conn<S>(socket: S) -> ConnectionInner<S>
+    where
+        S: AsyncRead + AsyncWrite + Unpin + Send,
+    {
         let framed = Framed::new(socket, MsgCodec);
         let (conn_sender, mut conn_receiver) = framed.split();
         let (cb_queue_tx, mut cb_queue_rx) = mpsc::unbounded_channel::<Sender<Msg>>();
@@ -138,23 +141,27 @@ impl Connection {
 
         match self {
             Connection::PLAIN(ref mut inner) => {
-                inner.sender_queue_mut()
+                inner
+                    .sender_queue_mut()
                     .send(tx)
                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
                     .await?;
 
-                inner.socket_sender_mut()
+                inner
+                    .socket_sender_mut()
                     .send(msg)
                     .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
                     .await?;
-            },
+            }
             Connection::TLS(ref mut inner) => {
-                inner.sender_queue_mut()
+                inner
+                    .sender_queue_mut()
                     .send(tx)
                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
                     .await?;
 
-                inner.socket_sender_mut()
+                inner
+                    .socket_sender_mut()
                     .send(msg)
                     .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
                     .await?;
