@@ -19,7 +19,7 @@ and [API docs](https://docs.rs/crate/rustmann/).
 ## Features & TODOs
 
 - [x] TCP Client
-- [ ] TLS TCP Client *WIP*
+- [x] TLS TCP Client
 - [ ] UDP Client
 - [x] Report API (`send_events`)
 - [x] Query API (`send_query`)
