@@ -32,13 +32,13 @@ pub(crate) enum Connection {
 #[derive(Debug)]
 pub(crate) struct ConnectionInner<S>
 where
-    S: AsyncRead + AsyncWrite + Unpin,
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     sender_queue: UnboundedSender<Sender<Msg>>,
     socket_sender: SplitSink<Framed<S, MsgCodec>, Msg>,
 }
 
-impl<S: AsyncRead + AsyncWrite + Unpin> ConnectionInner<S> {
+impl<S: AsyncRead + AsyncWrite + Unpin + Send> ConnectionInner<S> {
     fn sender_queue_mut(&mut self) -> &mut UnboundedSender<Sender<Msg>> {
         &mut self.sender_queue
     }
@@ -60,6 +60,35 @@ impl Connection {
         }
     }
 
+    fn setup_conn<S>(socket: S) -> ConnectionInner<S> where S: AsyncRead + AsyncWrite + Unpin + Send {
+        let framed = Framed::new(socket, MsgCodec);
+        let (conn_sender, mut conn_receiver) = framed.split();
+        let (cb_queue_tx, mut cb_queue_rx) = mpsc::unbounded_channel::<Sender<Msg>>();
+
+        let receiver_loop = async move {
+            loop {
+                let frame = conn_receiver.next().await;
+                let cb = cb_queue_rx.recv().await;
+                if let (Some(Ok(frame)), Some(cb)) = (frame, cb) {
+                    let r = cb.send(frame);
+                    if let Err(_) = r {
+                        // eprintln!("failed to deliver msg to callback {:?}", e);
+                        break;
+                    }
+                } else {
+                    // eprintln!("failed to deliver msg to callback.");
+                    break;
+                }
+            }
+        };
+        tokio::spawn(receiver_loop);
+
+        ConnectionInner {
+            sender_queue: cb_queue_tx,
+            socket_sender: conn_sender,
+        }
+    }
+
     async fn connect_plain(
         addr: SocketAddr,
         options: RiemannClientOptions,
@@ -71,32 +100,8 @@ impl Connection {
             .and_then(|socket| {
                 socket.set_nodelay(true)?;
 
-                let framed = Framed::new(socket, MsgCodec);
-                let (conn_sender, mut conn_receiver) = framed.split();
-                let (cb_queue_tx, mut cb_queue_rx) = mpsc::unbounded_channel::<Sender<Msg>>();
-
-                let receiver_loop = async move {
-                    loop {
-                        let frame = conn_receiver.next().await;
-                        let cb = cb_queue_rx.recv().await;
-                        if let (Some(Ok(frame)), Some(cb)) = (frame, cb) {
-                            let r = cb.send(frame);
-                            if let Err(_) = r {
-                                // eprintln!("failed to deliver msg to callback {:?}", e);
-                                break;
-                            }
-                        } else {
-                            // eprintln!("failed to deliver msg to callback.");
-                            break;
-                        }
-                    }
-                };
-                tokio::spawn(receiver_loop);
-
-                Ok(Connection::PLAIN(ConnectionInner {
-                    sender_queue: cb_queue_tx,
-                    socket_sender: conn_sender,
-                }))
+                let conn = Self::setup_conn(socket);
+                Ok(Connection::PLAIN(conn))
             })
     }
 
@@ -123,32 +128,8 @@ impl Connection {
             })?
             .await
             .and_then(|socket| {
-                let framed = Framed::new(socket, MsgCodec);
-                let (conn_sender, mut conn_receiver) = framed.split();
-                let (cb_queue_tx, mut cb_queue_rx) = mpsc::unbounded_channel::<Sender<Msg>>();
-
-                let receiver_loop = async move {
-                    loop {
-                        let frame = conn_receiver.next().await;
-                        let cb = cb_queue_rx.recv().await;
-                        if let (Some(Ok(frame)), Some(cb)) = (frame, cb) {
-                            let r = cb.send(frame);
-                            if let Err(_) = r {
-                                // eprintln!("failed to deliver msg to callback {:?}", e);
-                                break;
-                            }
-                        } else {
-                            // eprintln!("failed to deliver msg to callback.");
-                            break;
-                        }
-                    }
-                };
-                tokio::spawn(receiver_loop);
-
-                Ok(Connection::TLS(ConnectionInner {
-                    sender_queue: cb_queue_tx,
-                    socket_sender: conn_sender,
-                }))
+                let conn = Self::setup_conn(socket);
+                Ok(Connection::TLS(conn))
             })
     }
 
