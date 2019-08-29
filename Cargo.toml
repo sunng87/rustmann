@@ -12,7 +12,7 @@ edition = "2018"
 [features]
 
 [dependencies]
-tokio = "=0.2.0-alpha.2"
+tokio = "=0.2.0-alpha.3"
 futures-core-preview = "=0.3.0-alpha.18"
 futures-util-preview = "=0.3.0-alpha.18"
 protobuf = { version = "2", features = ["with-bytes"] }
