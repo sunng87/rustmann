@@ -1,5 +1,3 @@
-#![feature(async_await)]
-
 use tokio::codec::{FramedRead, LinesCodec};
 use tokio::io::stdin;
 use tokio::prelude::*;
@@ -7,11 +5,11 @@ use tokio::sync::mpsc;
 
 use protobuf::Chars;
 use rustmann::protos::riemann::Event;
-use rustmann::{RiemannClient, RiemannClientOptions, RiemannClientError};
+use rustmann::{RiemannClient, RiemannClientError, RiemannClientOptions};
 
 #[tokio::main]
 async fn main() -> Result<(), RiemannClientError> {
-    let mut client = RiemannClient::new(&RiemannClientOptions::default());
+    let mut client = RiemannClient::new(&RiemannClientOptions::default())?;
     let mut input = FramedRead::new(stdin(), LinesCodec::new());
 
     let (mut tx, mut rx) = mpsc::unbounded_channel();
