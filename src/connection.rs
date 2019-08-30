@@ -1,6 +1,5 @@
 use std::io;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::stream::SplitSink;
@@ -13,11 +12,6 @@ use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::sync::oneshot::{self, Sender};
 
 use tokio_rustls::client::TlsStream;
-use tokio_rustls::rustls::ClientConfig;
-use tokio_rustls::TlsConnector;
-
-use webpki::DNSNameRef;
-use webpki_roots;
 
 use crate::codec::MsgCodec;
 use crate::options::RiemannClientOptions;
