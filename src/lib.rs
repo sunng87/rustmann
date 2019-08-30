@@ -7,6 +7,7 @@ mod connection;
 mod error;
 mod options;
 pub mod protos;
+mod tls;
 
 pub use crate::client::RiemannClient;
 pub use crate::error::RiemannClientError;

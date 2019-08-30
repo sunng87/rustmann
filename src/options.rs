@@ -13,8 +13,7 @@ pub struct RiemannClientOptions {
     connect_timeout_ms: u64,
     socket_timeout_ms: u64,
     use_tls: bool,
-    // TODO: the type
-    client_cert: Option<bool>,
+    client_cert: Option<String>,
 }
 
 impl Default for RiemannClientOptions {

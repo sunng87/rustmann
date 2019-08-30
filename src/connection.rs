@@ -22,6 +22,7 @@ use webpki_roots;
 use crate::codec::MsgCodec;
 use crate::options::RiemannClientOptions;
 use crate::protos::riemann::{Event, Msg, Query};
+use crate::tls::setup_tls_client;
 
 #[derive(Debug)]
 pub(crate) enum Connection {
@@ -119,15 +120,7 @@ impl Connection {
             .and_then(|socket| {
                 socket.set_nodelay(true)?;
 
-                let mut tls_config = ClientConfig::new();
-                tls_config
-                    .root_store
-                    .add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
-                let connector = TlsConnector::from(Arc::new(tls_config));
-
-                let dns_name = DNSNameRef::try_from_ascii_str(options.host())
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-                Ok(connector.connect(dns_name, socket))
+                setup_tls_client(socket, &options)
             })?
             .await
             .and_then(|socket| {
