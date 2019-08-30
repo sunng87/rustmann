@@ -1,6 +1,3 @@
-use std::io;
-use std::net::{SocketAddr, ToSocketAddrs};
-
 use derive_builder::Builder;
 use getset::Getters;
 
@@ -30,14 +27,7 @@ impl Default for RiemannClientOptions {
 }
 
 impl RiemannClientOptions {
-    // FIXME: async
-    pub(crate) fn to_socket_addr(&self) -> Result<SocketAddr, io::Error> {
-        (self.host().as_str(), *self.port())
-            .to_socket_addrs()
-            .and_then(|mut i| {
-                i.next().ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::AddrNotAvailable, "Host not found")
-                })
-            })
+    pub(crate) fn to_socket_addr_string(&self) -> String {
+        format!("{}:{}", self.host, self.port)
     }
 }

@@ -4,7 +4,7 @@ use rustmann::{RiemannClient, RiemannClientError, RiemannClientOptions};
 
 #[tokio::main]
 async fn main() -> Result<(), RiemannClientError> {
-    let mut client = RiemannClient::new(&RiemannClientOptions::default())?;
+    let mut client = RiemannClient::new(&RiemannClientOptions::default());
 
     let mut event = Event::new();
     event.set_service(Chars::from("riemann_test"));

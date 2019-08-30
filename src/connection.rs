@@ -1,5 +1,4 @@
 use std::io;
-use std::net::SocketAddr;
 use std::time::Duration;
 
 use futures_util::stream::SplitSink;
@@ -44,14 +43,11 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> ConnectionInner<S> {
 }
 
 impl Connection {
-    pub(crate) async fn connect(
-        addr: SocketAddr,
-        options: RiemannClientOptions,
-    ) -> Result<Connection, io::Error> {
+    pub(crate) async fn connect(options: RiemannClientOptions) -> Result<Connection, io::Error> {
         if *options.use_tls() {
-            Self::connect_tls(addr, options).await
+            Self::connect_tls(options).await
         } else {
-            Self::connect_plain(addr, options).await
+            Self::connect_plain(options).await
         }
     }
 
@@ -87,10 +83,8 @@ impl Connection {
         }
     }
 
-    async fn connect_plain(
-        addr: SocketAddr,
-        options: RiemannClientOptions,
-    ) -> Result<Connection, io::Error> {
+    async fn connect_plain(options: RiemannClientOptions) -> Result<Connection, io::Error> {
+        let addr = options.to_socket_addr_string();
         TcpStream::connect(&addr)
             .timeout(Duration::from_millis(*options.connect_timeout_ms()))
             .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
@@ -103,10 +97,8 @@ impl Connection {
             })
     }
 
-    async fn connect_tls(
-        addr: SocketAddr,
-        options: RiemannClientOptions,
-    ) -> Result<Connection, io::Error> {
+    async fn connect_tls(options: RiemannClientOptions) -> Result<Connection, io::Error> {
+        let addr = options.to_socket_addr_string();
         TcpStream::connect(&addr)
             .timeout(Duration::from_millis(*options.connect_timeout_ms()))
             .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
