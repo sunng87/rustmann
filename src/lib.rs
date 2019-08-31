@@ -12,3 +12,5 @@ mod tls;
 pub use crate::client::RiemannClient;
 pub use crate::error::RiemannClientError;
 pub use crate::options::{RiemannClientOptions, RiemannClientOptionsBuilder};
+
+pub use tokio_rustls::rustls::ClientConfig;
