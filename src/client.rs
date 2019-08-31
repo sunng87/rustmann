@@ -82,7 +82,7 @@ impl RiemannClient {
     }
 
     /// Send events to riemann via this client.
-    pub async fn send_events(&mut self, events: Vec<Event>) -> Result<bool, RiemannClientError> {
+    pub async fn send_events(&mut self, events: Vec<Event>) -> Result<(), RiemannClientError> {
         let timeout = *self.inner.options.socket_timeout_ms();
         let state = self.inner.state.clone();
         let inner = &mut self.inner;
@@ -96,8 +96,15 @@ impl RiemannClient {
                 *state.lock().unwrap() = ClientState::Disconnected;
                 e
             })
-            .map(|msg| msg.get_ok())
             .map_err(RiemannClientError::from)
+            .and_then(|msg| {
+                if msg.get_ok() {
+                    Ok(())
+                } else {
+                    Err(RiemannClientError::RiemannError(msg.get_error().to_owned()))
+                }
+            })
+
     }
 
     /// Query riemann server by riemann query syntax via this client.
@@ -121,7 +128,13 @@ impl RiemannClient {
                 *state.lock().unwrap() = ClientState::Disconnected;
                 e
             })
-            .map(|msg| Vec::from(msg.get_events()))
             .map_err(RiemannClientError::from)
+            .and_then(|msg| {
+                if msg.get_ok() {
+                    Ok(Vec::from(msg.get_events()))
+                } else {
+                    Err(RiemannClientError::RiemannError(msg.get_error().to_owned()))
+                }
+            })
     }
 }

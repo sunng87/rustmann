@@ -4,6 +4,8 @@ use std::io;
 pub enum RiemannClientError {
     #[fail(display = "IO error: {}", _0)]
     IoError(#[fail(cause)] io::Error),
+    #[fail(display = "Riemann error: {}", _0)]
+    RiemannError(String),
 }
 
 impl From<io::Error> for RiemannClientError {
