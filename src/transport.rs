@@ -18,13 +18,13 @@ use crate::protos::riemann::{Event, Msg, Query};
 use crate::tls::setup_tls_client;
 
 #[derive(Debug)]
-pub(crate) enum Connection {
-    PLAIN(ConnectionInner<TcpStream>),
-    TLS(ConnectionInner<TlsStream<TcpStream>>),
+pub(crate) enum Transport {
+    PLAIN(TransportInner<TcpStream>),
+    TLS(TransportInner<TlsStream<TcpStream>>),
 }
 
 #[derive(Debug)]
-pub(crate) struct ConnectionInner<S>
+pub(crate) struct TransportInner<S>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
@@ -32,7 +32,7 @@ where
     socket_sender: SplitSink<Framed<S, MsgCodec>, Msg>,
 }
 
-impl<S: AsyncRead + AsyncWrite + Unpin + Send> ConnectionInner<S> {
+impl<S: AsyncRead + AsyncWrite + Unpin + Send> TransportInner<S> {
     fn sender_queue_mut(&mut self) -> &mut UnboundedSender<Sender<Msg>> {
         &mut self.sender_queue
     }
@@ -42,8 +42,8 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> ConnectionInner<S> {
     }
 }
 
-impl Connection {
-    pub(crate) async fn connect(options: RiemannClientOptions) -> Result<Connection, io::Error> {
+impl Transport {
+    pub(crate) async fn connect(options: RiemannClientOptions) -> Result<Transport, io::Error> {
         if *options.use_tls() {
             Self::connect_tls(options).await
         } else {
@@ -51,7 +51,7 @@ impl Connection {
         }
     }
 
-    fn setup_conn<S>(socket: S) -> ConnectionInner<S>
+    fn setup_conn<S>(socket: S) -> TransportInner<S>
     where
         S: AsyncRead + AsyncWrite + Unpin + Send,
     {
@@ -77,13 +77,13 @@ impl Connection {
         };
         tokio::spawn(receiver_loop);
 
-        ConnectionInner {
+        TransportInner {
             sender_queue: cb_queue_tx,
             socket_sender: conn_sender,
         }
     }
 
-    async fn connect_plain(options: RiemannClientOptions) -> Result<Connection, io::Error> {
+    async fn connect_plain(options: RiemannClientOptions) -> Result<Transport, io::Error> {
         let addr = options.to_socket_addr_string();
         TcpStream::connect(&addr)
             .timeout(Duration::from_millis(*options.connect_timeout_ms()))
@@ -93,11 +93,11 @@ impl Connection {
                 socket.set_nodelay(true)?;
 
                 let conn = Self::setup_conn(socket);
-                Ok(Connection::PLAIN(conn))
+                Ok(Transport::PLAIN(conn))
             })
     }
 
-    async fn connect_tls(options: RiemannClientOptions) -> Result<Connection, io::Error> {
+    async fn connect_tls(options: RiemannClientOptions) -> Result<Transport, io::Error> {
         let addr = options.to_socket_addr_string();
         TcpStream::connect(&addr)
             .timeout(Duration::from_millis(*options.connect_timeout_ms()))
@@ -111,7 +111,7 @@ impl Connection {
             .await
             .and_then(|socket| {
                 let conn = Self::setup_conn(socket);
-                Ok(Connection::TLS(conn))
+                Ok(Transport::TLS(conn))
             })
     }
 
@@ -119,7 +119,7 @@ impl Connection {
         let (tx, rx) = oneshot::channel::<Msg>();
 
         match self {
-            Connection::PLAIN(ref mut inner) => {
+            Transport::PLAIN(ref mut inner) => {
                 inner
                     .sender_queue_mut()
                     .send(tx)
@@ -132,7 +132,7 @@ impl Connection {
                     .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
                     .await?;
             }
-            Connection::TLS(ref mut inner) => {
+            Transport::TLS(ref mut inner) => {
                 inner
                     .sender_queue_mut()
                     .send(tx)
