@@ -94,9 +94,8 @@ impl RiemannClient {
             .await
             .map_err(move |e| {
                 *state.lock().unwrap() = ClientState::Disconnected;
-                e
+                RiemannClientError::from(e)
             })
-            .map_err(RiemannClientError::from)
             .and_then(|msg| {
                 if msg.get_ok() {
                     Ok(())
@@ -126,9 +125,8 @@ impl RiemannClient {
             .await
             .map_err(move |e| {
                 *state.lock().unwrap() = ClientState::Disconnected;
-                e
+                RiemannClientError::from(e)
             })
-            .map_err(RiemannClientError::from)
             .and_then(|msg| {
                 if msg.get_ok() {
                     Ok(Vec::from(msg.get_events()))
