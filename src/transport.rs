@@ -1,13 +1,12 @@
 use std::io;
-use std::net::SocketAddr;
 use std::time::Duration;
 
-use futures_util::future::ok;
+use bytes::BytesMut;
 use futures_util::stream::SplitSink;
 use futures_util::TryFutureExt;
 use protobuf::RepeatedField;
-use tokio::codec::Framed;
-use tokio::net::{TcpStream, UdpSocket, UdpFramed};
+use tokio::codec::{Encoder, Framed};
+use tokio::net::{TcpStream, UdpSocket};
 use tokio::prelude::*;
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::sync::oneshot::{self, Sender};
@@ -44,7 +43,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> TcpTransportInner<S> {
         &mut self.socket_sender
     }
 
-    fn setup_conn(socket: S) -> TcpTransportInner<S>{
+    fn setup_conn(socket: S) -> TcpTransportInner<S> {
         let framed = Framed::new(socket, MsgCodec);
         let (conn_sender, mut conn_receiver) = framed.split();
         let (cb_queue_tx, mut cb_queue_rx) = mpsc::unbounded_channel::<Sender<Msg>>();
@@ -75,14 +74,12 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> TcpTransportInner<S> {
 
     async fn send_for_response(&mut self, msg: Msg, socket_timeout: u64) -> Result<Msg, io::Error> {
         let (tx, rx) = oneshot::channel::<Msg>();
-        self
-            .sender_queue_mut()
+        self.sender_queue_mut()
             .send(tx)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
             .await?;
 
-        self
-            .socket_sender_mut()
+        self.socket_sender_mut()
             .send(msg)
             .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
             .await?;
@@ -91,30 +88,29 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> TcpTransportInner<S> {
             .await?
             .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
     }
-
 }
 
 #[derive(Debug)]
 pub(crate) struct UdpTransportInner {
-    socket: UdpFramed<MsgCodec>,
-    addr: SocketAddr,
+    socket: UdpSocket,
+    codec: MsgCodec,
 }
 
 impl UdpTransportInner {
     async fn new(options: &RiemannClientOptions) -> Result<UdpTransportInner, io::Error> {
         let socket = UdpSocket::bind("0.0.0.0:0").await?;
-        // socket.connect(options.to_socket_addr_string()).await?;
+        socket.connect(options.to_socket_addr_string()).await?;
 
-        let framed = UdpFramed::new(socket, MsgCodec);
         Ok(UdpTransportInner {
-            socket: framed,
-            // TODO: async resolve
-            addr: options.to_socket_addr_string().to_addrs().next().unwrap()
+            socket: socket,
+            codec: MsgCodec,
         })
     }
 
     async fn send_without_response(&mut self, msg: Msg) -> Result<(), io::Error> {
-        self.socket.send((msg, self.addr)).await
+        let mut buf = BytesMut::new();
+        self.codec.encode(msg, &mut buf)?;
+        self.socket.send(buf.as_ref()).await.map(|_| ())
     }
 }
 
@@ -175,14 +171,13 @@ impl Transport {
         msg.set_events(RepeatedField::from_slice(events));
 
         match self {
-            Transport::PLAIN(ref inner) => inner.send_for_response(msg, socket_timeout).await,
-            Transport::TLS(ref inner) => inner.send_for_response(msg, socket_timeout).await,
-            Transport::UDP(ref inner) => {
+            Transport::PLAIN(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
+            Transport::TLS(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
+            Transport::UDP(ref mut inner) => {
                 inner.send_without_response(msg).await?;
                 Ok(Msg::new())
             }
         }
-
     }
 
     pub(crate) async fn query(
@@ -194,11 +189,9 @@ impl Transport {
         msg.set_query(query);
 
         match self {
-            Transport::PLAIN(ref inner) => inner.send_for_response(msg, socket_timeout).await,
-            Transport::TLS(ref inner) => inner.send_for_response(msg, socket_timeout).await,
-            Transport::UDP(_) => {
-                Err(io::Error::new(io::ErrorKind::Other, "Unsupported."))
-            }
+            Transport::PLAIN(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
+            Transport::TLS(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
+            Transport::UDP(_) => Err(io::Error::new(io::ErrorKind::Other, "Unsupported.")),
         }
     }
 }

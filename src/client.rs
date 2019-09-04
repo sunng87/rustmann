@@ -9,10 +9,10 @@ use futures_core::future::BoxFuture;
 use futures_util::FutureExt;
 use protobuf::Chars;
 
-use crate::transport::Transport;
 use crate::error::RiemannClientError;
 use crate::options::RiemannClientOptions;
 use crate::protos::riemann::{Event, Query};
+use crate::transport::Transport;
 
 #[derive(Clone)]
 pub struct RiemannClient {
@@ -104,7 +104,6 @@ impl RiemannClient {
                     Err(RiemannClientError::RiemannError(msg.get_error().to_owned()))
                 }
             })
-
     }
 
     /// Query riemann server by riemann query syntax via this client.
