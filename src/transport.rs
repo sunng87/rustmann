@@ -175,7 +175,9 @@ impl Transport {
             Transport::TLS(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
             Transport::UDP(ref mut inner) => {
                 inner.send_without_response(msg).await?;
-                Ok(Msg::new())
+                let mut ok_msg = Msg::new();
+                ok_msg.set_ok(true);
+                Ok(ok_msg)
             }
         }
     }

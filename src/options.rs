@@ -7,6 +7,7 @@ use tokio_rustls::rustls::ClientConfig;
 #[derive(Builder, Clone, Getters)]
 #[builder(setter(into))]
 #[builder(build_fn(skip))]
+#[builder(pattern = "owned")]
 #[get = "pub"]
 pub struct RiemannClientOptions {
     host: String,
