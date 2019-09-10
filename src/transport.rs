@@ -1,11 +1,10 @@
 use std::io;
 use std::time::Duration;
 
-use bytes::BytesMut;
 use futures_util::stream::SplitSink;
 use futures_util::TryFutureExt;
-use protobuf::RepeatedField;
-use tokio::codec::{Encoder, Framed};
+use protobuf::{RepeatedField};
+use tokio::codec::{Framed};
 use tokio::net::{TcpStream, UdpSocket};
 use tokio::prelude::*;
 use tokio::sync::mpsc::{self, UnboundedSender};
@@ -13,7 +12,7 @@ use tokio::sync::oneshot::{self, Sender};
 
 use tokio_rustls::client::TlsStream;
 
-use crate::codec::MsgCodec;
+use crate::codec::{encode_for_udp, MsgCodec};
 use crate::options::RiemannClientOptions;
 use crate::protos::riemann::{Event, Msg, Query};
 use crate::tls::setup_tls_client;
@@ -93,7 +92,6 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> TcpTransportInner<S> {
 #[derive(Debug)]
 pub(crate) struct UdpTransportInner {
     socket: UdpSocket,
-    codec: MsgCodec,
 }
 
 impl UdpTransportInner {
@@ -103,13 +101,12 @@ impl UdpTransportInner {
 
         Ok(UdpTransportInner {
             socket: socket,
-            codec: MsgCodec,
         })
     }
 
     async fn send_without_response(&mut self, msg: Msg) -> Result<(), io::Error> {
-        let mut buf = BytesMut::new();
-        self.codec.encode(msg, &mut buf)?;
+        let buf = encode_for_udp(&msg)?;
+
         self.socket.send(buf.as_ref()).await.map(|_| ())
     }
 }

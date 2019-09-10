@@ -45,3 +45,12 @@ impl Decoder for MsgCodec {
         }
     }
 }
+
+pub(crate) fn encode_for_udp(msg: &Msg) -> Result<BytesMut, io::Error> {
+    let mut buf = BytesMut::new();
+
+    let data = msg.write_to_bytes().map_err(io::Error::from)?;
+    buf.put(&data);
+
+    Ok(buf)
+}
