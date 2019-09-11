@@ -9,10 +9,10 @@ use futures_core::future::BoxFuture;
 use futures_util::FutureExt;
 use protobuf::Chars;
 
-use crate::connection::Connection;
 use crate::error::RiemannClientError;
 use crate::options::RiemannClientOptions;
 use crate::protos::riemann::{Event, Query};
+use crate::transport::Transport;
 
 #[derive(Clone)]
 pub struct RiemannClient {
@@ -26,13 +26,13 @@ struct Inner {
 }
 
 enum ClientState {
-    Connected(Arc<Mutex<Connection>>),
-    Connecting(BoxFuture<'static, Result<Connection, io::Error>>),
+    Connected(Arc<Mutex<Transport>>),
+    Connecting(BoxFuture<'static, Result<Transport, io::Error>>),
     Disconnected,
 }
 
 impl Future for Inner {
-    type Output = Result<Arc<Mutex<Connection>>, RiemannClientError>;
+    type Output = Result<Arc<Mutex<Transport>>, RiemannClientError>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let mut inner_state = self.state.lock().unwrap();
@@ -56,7 +56,7 @@ impl Future for Inner {
                 }
             },
             ClientState::Disconnected => {
-                let mut f = Connection::connect(self.options.clone()).boxed();
+                let mut f = Transport::connect(self.options.clone()).boxed();
                 if let Poll::Ready(Ok(conn)) = f.poll_unpin(cx) {
                     let conn_wrapper = Arc::new(Mutex::new(conn));
                     *inner_state = ClientState::Connected(conn_wrapper.clone());
@@ -103,7 +103,6 @@ impl RiemannClient {
                     Err(RiemannClientError::RiemannError(msg.get_error().to_owned()))
                 }
             })
-
     }
 
     /// Query riemann server by riemann query syntax via this client.

@@ -3,11 +3,11 @@ extern crate failure;
 
 mod client;
 mod codec;
-mod connection;
 mod error;
 mod options;
 pub mod protos;
 mod tls;
+mod transport;
 
 pub use crate::client::RiemannClient;
 pub use crate::error::RiemannClientError;

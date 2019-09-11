@@ -7,12 +7,14 @@ use tokio_rustls::rustls::ClientConfig;
 #[derive(Builder, Clone, Getters)]
 #[builder(setter(into))]
 #[builder(build_fn(skip))]
+#[builder(pattern = "owned")]
 #[get = "pub"]
 pub struct RiemannClientOptions {
     host: String,
     port: u16,
     connect_timeout_ms: u64,
     socket_timeout_ms: u64,
+    use_udp: bool,
     use_tls: bool,
     tls_config: Option<Arc<ClientConfig>>,
 }
@@ -31,11 +33,19 @@ impl RiemannClientOptionsBuilder {
                 None
             }
         });
+
+        let udp = if use_tls {
+            false
+        } else {
+            self.use_udp.unwrap_or(false)
+        };
+
         RiemannClientOptions {
             host: self.host.unwrap_or_else(|| "127.0.0.1".to_owned()),
             port: self.port.unwrap_or(5555),
             connect_timeout_ms: self.connect_timeout_ms.unwrap_or(2000),
             socket_timeout_ms: self.connect_timeout_ms.unwrap_or(3000),
+            use_udp: udp,
             use_tls: use_tls,
             tls_config: tls_config,
         }
@@ -49,6 +59,7 @@ impl Default for RiemannClientOptions {
             port: 5555,
             connect_timeout_ms: 2000,
             socket_timeout_ms: 3000,
+            use_udp: false,
             use_tls: false,
             tls_config: None,
         }
