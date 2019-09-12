@@ -139,7 +139,7 @@ impl Transport {
 
     async fn connect_plain(options: RiemannClientOptions) -> Result<Transport, io::Error> {
         let addr = options.to_socket_addr_string();
-        TcpStream::connect(&addr)
+        TcpStream::connect(addr)
             .timeout(Duration::from_millis(*options.connect_timeout_ms()))
             .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
             .await?
@@ -154,7 +154,7 @@ impl Transport {
     #[cfg(feature = "tls")]
     async fn connect_tls(options: RiemannClientOptions) -> Result<Transport, io::Error> {
         let addr = options.to_socket_addr_string();
-        TcpStream::connect(&addr)
+        TcpStream::connect(addr)
             .timeout(Duration::from_millis(*options.connect_timeout_ms()))
             .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
             .await?
