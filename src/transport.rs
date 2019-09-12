@@ -10,16 +10,19 @@ use tokio::prelude::*;
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::sync::oneshot::{self, Sender};
 
+#[cfg(feature = "tls")]
 use tokio_rustls::client::TlsStream;
 
 use crate::codec::{encode_for_udp, MsgCodec};
 use crate::options::RiemannClientOptions;
 use crate::protos::riemann::{Event, Msg, Query};
+#[cfg(feature = "tls")]
 use crate::tls::setup_tls_client;
 
 #[derive(Debug)]
 pub(crate) enum Transport {
     PLAIN(TcpTransportInner<TcpStream>),
+    #[cfg(feature = "tls")]
     TLS(TcpTransportInner<TlsStream<TcpStream>>),
     UDP(UdpTransportInner),
 }
@@ -114,7 +117,14 @@ impl UdpTransportInner {
 impl Transport {
     pub(crate) async fn connect(options: RiemannClientOptions) -> Result<Transport, io::Error> {
         if *options.use_tls() {
-            Self::connect_tls(options).await
+            #[cfg(feature = "tls")]
+            {
+                Self::connect_tls(options).await
+            }
+            #[cfg(not(feature = "tls"))]
+            {
+                unreachable!("enable tls feature for tls support")
+            }
         } else if *options.use_udp() {
             Self::connect_udp(options).await
         } else {
@@ -141,6 +151,7 @@ impl Transport {
             })
     }
 
+    #[cfg(feature = "tls")]
     async fn connect_tls(options: RiemannClientOptions) -> Result<Transport, io::Error> {
         let addr = options.to_socket_addr_string();
         TcpStream::connect(&addr)
@@ -169,6 +180,7 @@ impl Transport {
 
         match self {
             Transport::PLAIN(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
+            #[cfg(feature = "tls")]
             Transport::TLS(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
             Transport::UDP(ref mut inner) => {
                 inner.send_without_response(msg).await?;
@@ -189,6 +201,7 @@ impl Transport {
 
         match self {
             Transport::PLAIN(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
+            #[cfg(feature = "tls")]
             Transport::TLS(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
             Transport::UDP(_) => Err(io::Error::new(io::ErrorKind::Other, "Unsupported.")),
         }

@@ -1,7 +1,9 @@
+#[cfg(feature = "tls")]
 use std::sync::Arc;
 
 use derive_builder::Builder;
 use getset::Getters;
+#[cfg(feature = "tls")]
 use tokio_rustls::rustls::ClientConfig;
 
 #[derive(Builder, Clone, Getters)]
@@ -16,12 +18,14 @@ pub struct RiemannClientOptions {
     socket_timeout_ms: u64,
     use_udp: bool,
     use_tls: bool,
+    #[cfg(feature = "tls")]
     tls_config: Option<Arc<ClientConfig>>,
 }
 
 impl RiemannClientOptionsBuilder {
     pub fn build(self) -> RiemannClientOptions {
         let use_tls = self.use_tls.unwrap_or(false);
+        #[cfg(feature = "tls")]
         let tls_config = self.tls_config.unwrap_or_else(|| {
             if use_tls {
                 let mut tls_config = ClientConfig::new();
@@ -47,6 +51,7 @@ impl RiemannClientOptionsBuilder {
             socket_timeout_ms: self.connect_timeout_ms.unwrap_or(3000),
             use_udp: udp,
             use_tls: use_tls,
+            #[cfg(feature = "tls")]
             tls_config: tls_config,
         }
     }
@@ -61,6 +66,7 @@ impl Default for RiemannClientOptions {
             socket_timeout_ms: 3000,
             use_udp: false,
             use_tls: false,
+            #[cfg(feature = "tls")]
             tls_config: None,
         }
     }

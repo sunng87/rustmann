@@ -10,6 +10,7 @@ readme = "README.md"
 edition = "2018"
 
 [features]
+tls = ["tokio-rustls", "webpki", "webpki-roots"]
 
 [dependencies]
 tokio = "=0.2.0-alpha.4"
@@ -20,9 +21,9 @@ bytes = "0.4"
 derive_builder = "0.7.0"
 getset = "0.0.7"
 failure = "0.1"
-tokio-rustls = { version = "0.12.0-alpha.1" }
-webpki = {version = "0.21" }
-webpki-roots = "0.17"
+tokio-rustls = { version = "0.12.0-alpha.1", optional = true }
+webpki = { version = "0.21", optional = true  }
+webpki-roots = { version = "0.17", optional = true }
 
 [build-dependencies]
 protoc-rust = "2"
