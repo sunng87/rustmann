@@ -120,7 +120,7 @@ impl RiemannClient {
         let mut query = Query::new();
         query.set_string(Chars::from(query_string));
 
-        conn.query(query, timeout)
+        conn.query(&query, timeout)
             .await
             .map_err(move |e| {
                 *state.lock().unwrap() = ClientState::Disconnected;

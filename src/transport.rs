@@ -193,11 +193,11 @@ impl Transport {
 
     pub(crate) async fn query(
         &mut self,
-        query: Query,
+        query: &Query,
         socket_timeout: u64,
     ) -> Result<Msg, io::Error> {
         let mut msg = Msg::new();
-        msg.set_query(query);
+        msg.set_query(query.clone());
 
         match self {
             Transport::PLAIN(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
