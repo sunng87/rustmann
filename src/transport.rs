@@ -116,16 +116,14 @@ impl UdpTransportInner {
 
 impl Transport {
     pub(crate) async fn connect(options: RiemannClientOptions) -> Result<Transport, io::Error> {
-        if *options.use_tls() {
-            #[cfg(feature = "tls")]
-            {
-                Self::connect_tls(options).await
+        #[cfg(feature = "tls")]
+        {
+            if *options.use_tls() {
+                return Self::connect_tls(options).await;
             }
-            #[cfg(not(feature = "tls"))]
-            {
-                unreachable!("enable tls feature for tls support")
-            }
-        } else if *options.use_udp() {
+        }
+
+        if *options.use_udp() {
             Self::connect_udp(options).await
         } else {
             Self::connect_plain(options).await
