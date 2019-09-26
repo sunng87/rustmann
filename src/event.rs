@@ -1,0 +1,123 @@
+use crate::protos::riemann::Event;
+
+use protobuf::Chars;
+
+#[derive(Default)]
+pub struct EventBuilder {
+    time: Option<i64>,
+    state: Option<String>,
+    service: Option<String>,
+    host: Option<String>,
+    description: Option<String>,
+    tags: Vec<String>,
+    ttl: Option<f32>,
+
+    time_micros: Option<i64>,
+    metric_sint64: Option<i64>,
+    metric_d: Option<f64>,
+    metric_f: Option<f32>,
+}
+
+impl EventBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn time(mut self, time: i64) -> Self {
+        self.time = Some(time);
+        self
+    }
+
+    pub fn state(mut self, service: String) -> Self {
+        self.service = Some(service);
+        self
+    }
+
+    pub fn host(mut self, host: String) -> Self {
+        self.host = Some(host);
+        self
+    }
+
+    pub fn description(mut self, description: String) -> Self {
+        self.description = Some(description);
+        self
+    }
+
+    pub fn add_tags(mut self, tag: String) -> Self {
+        self.tags.push(tag);
+        self
+    }
+
+    pub fn ttl(mut self, ttl: f32) -> Self {
+        self.ttl = Some(ttl);
+        self
+    }
+
+    pub fn time_micros(mut self, time_micros: i64) -> Self {
+        self.time_micros = Some(time_micros);
+        self
+    }
+
+    pub fn metric_sint64(mut self, metric_sint64: i64) -> Self {
+        self.metric_sint64 = Some(metric_sint64);
+        self
+    }
+
+    pub fn metric_d(mut self, metric_d: f64) -> Self {
+        self.metric_d = Some(metric_d);
+        self
+    }
+
+    pub fn metric_f(mut self, metric_f: f32) -> Self {
+        self.metric_f = Some(metric_f);
+        self
+    }
+
+    pub fn build(self) -> Event {
+        let mut event = Event::new();
+
+        if let Some(time) = self.time {
+            event.set_time(time);
+        }
+
+        if let Some(state) = self.state {
+            event.set_state(Chars::from(state));
+        }
+
+        if let Some(service) = self.service {
+            event.set_service(Chars::from(service));
+        }
+
+        if let Some(host) = self.host {
+            event.set_host(Chars::from(host));
+        }
+
+        if let Some(description) = self.description {
+            event.set_description(Chars::from(description));
+        }
+
+        event.set_tags(self.tags.iter().map(|t| Chars::from(t.as_ref())).collect());
+
+        if let Some(ttl) = self.ttl {
+            event.set_ttl(ttl);
+        }
+
+        if let Some(time_micros) = self.time_micros {
+            event.set_time_micros(time_micros);
+        }
+
+        if let Some(metric_sint64) = self.metric_sint64 {
+            event.set_metric_sint64(metric_sint64);
+        }
+
+        if let Some(metric_d) = self.metric_d {
+            event.set_metric_d(metric_d);
+        }
+
+        if let Some(metric_f) = self.metric_f {
+            event.set_metric_f(metric_f);
+        }
+
+        event
+    }
+}

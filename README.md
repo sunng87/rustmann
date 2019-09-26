@@ -23,7 +23,7 @@ and [API docs](https://docs.rs/crate/rustmann/).
 - [x] UDP Client
 - [x] Report API (`send_events`)
 - [x] Query API (`send_query`)
-- [ ] Event Builder API
+- [x] Event Builder API
 
 ## Minimal version policy
 
