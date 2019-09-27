@@ -28,23 +28,28 @@ impl EventBuilder {
         self
     }
 
-    pub fn state(mut self, service: String) -> Self {
-        self.service = Some(service);
+    pub fn state<S: Into<String>>(mut self, state: S) -> Self {
+        self.state = Some(state.into());
         self
     }
 
-    pub fn host(mut self, host: String) -> Self {
-        self.host = Some(host);
+    pub fn service<S: Into<String>>(mut self, service: S) -> Self {
+        self.service = Some(service.into());
         self
     }
 
-    pub fn description(mut self, description: String) -> Self {
-        self.description = Some(description);
+    pub fn host<S: Into<String>>(mut self, host: S) -> Self {
+        self.host = Some(host.into());
         self
     }
 
-    pub fn add_tags(mut self, tag: String) -> Self {
-        self.tags.push(tag);
+    pub fn description<S: Into<String>>(mut self, description: S) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+
+    pub fn add_tags<S: Into<String>>(mut self, tag: S) -> Self {
+        self.tags.push(tag.into());
         self
     }
 
