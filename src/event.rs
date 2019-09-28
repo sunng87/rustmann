@@ -48,7 +48,7 @@ impl EventBuilder {
         self
     }
 
-    pub fn add_tags<S: Into<String>>(mut self, tag: S) -> Self {
+    pub fn add_tag<S: Into<String>>(mut self, tag: S) -> Self {
         self.tags.push(tag.into());
         self
     }
