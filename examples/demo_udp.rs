@@ -1,6 +1,4 @@
-use protobuf::Chars;
-use rustmann::protos::riemann::Event;
-use rustmann::{RiemannClient, RiemannClientError, RiemannClientOptionsBuilder};
+use rustmann::{EventBuilder, RiemannClient, RiemannClientError, RiemannClientOptionsBuilder};
 
 #[tokio::main]
 async fn main() -> Result<(), RiemannClientError> {
@@ -12,10 +10,11 @@ async fn main() -> Result<(), RiemannClientError> {
 
     let mut client = RiemannClient::new(&options);
 
-    let mut event = Event::new();
-    event.set_service(Chars::from("riemann_test"));
-    event.set_state(Chars::from("ok"));
-    event.set_metric_f(123.4);
+    let event = EventBuilder::new()
+        .service("riemann_test")
+        .state("ok")
+        .metric_f(123.4)
+        .build();
 
     client.send_events(vec![event]).await?;
     println!("done");
