@@ -1,4 +1,4 @@
-use crate::protos::riemann::Event;
+use crate::protos::riemann::{Attribute, Event};
 
 use protobuf::Chars;
 
@@ -16,6 +16,8 @@ pub struct EventBuilder {
     metric_sint64: Option<i64>,
     metric_d: Option<f64>,
     metric_f: Option<f32>,
+
+    attributes: Vec<Attribute>,
 }
 
 impl EventBuilder {
@@ -78,6 +80,16 @@ impl EventBuilder {
         self
     }
 
+    pub fn add_attribute<S: Into<String>>(mut self, key: S, value: Option<S>) -> Self {
+        let mut attr = Attribute::new();
+        attr.set_key(Chars::from(key.into()));
+        if let Some(value) = value {
+            attr.set_value(Chars::from(value.into()));
+        }
+        self.attributes.push(attr);
+        self
+    }
+
     pub fn build(self) -> Event {
         let mut event = Event::new();
 
@@ -122,6 +134,8 @@ impl EventBuilder {
         if let Some(metric_f) = self.metric_f {
             event.set_metric_f(metric_f);
         }
+
+        event.set_attributes(self.attributes.into());
 
         event
     }
