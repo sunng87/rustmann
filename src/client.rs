@@ -106,10 +106,10 @@ impl RiemannClient {
     }
 
     /// Query riemann server by riemann query syntax via this client.
-    pub async fn send_query(
-        &mut self,
-        query_string: &str,
-    ) -> Result<Vec<Event>, RiemannClientError> {
+    pub async fn send_query<S>(&mut self, query_string: S) -> Result<Vec<Event>, RiemannClientError>
+    where
+        S: AsRef<str>,
+    {
         let timeout = *self.inner.options.socket_timeout_ms();
         let state = self.inner.state.clone();
         let inner = &mut self.inner;
@@ -118,7 +118,7 @@ impl RiemannClient {
         let mut conn = conn_wrapper.lock().unwrap();
 
         let mut query = Query::new();
-        query.set_string(Chars::from(query_string));
+        query.set_string(Chars::from(query_string.as_ref()));
 
         conn.query(&query, timeout)
             .await
