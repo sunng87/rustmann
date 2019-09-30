@@ -3,8 +3,8 @@ use std::time::Duration;
 
 use futures_util::stream::SplitSink;
 use futures_util::TryFutureExt;
-use protobuf::{RepeatedField};
-use tokio::codec::{Framed};
+use protobuf::RepeatedField;
+use tokio::codec::Framed;
 use tokio::net::{TcpStream, UdpSocket};
 use tokio::prelude::*;
 use tokio::sync::mpsc::{self, UnboundedSender};
@@ -37,14 +37,6 @@ where
 }
 
 impl<S: AsyncRead + AsyncWrite + Unpin + Send> TcpTransportInner<S> {
-    fn sender_queue_mut(&mut self) -> &mut UnboundedSender<Sender<Msg>> {
-        &mut self.sender_queue
-    }
-
-    fn socket_sender_mut(&mut self) -> &mut SplitSink<Framed<S, MsgCodec>, Msg> {
-        &mut self.socket_sender
-    }
-
     fn setup_conn(socket: S) -> TcpTransportInner<S> {
         let framed = Framed::new(socket, MsgCodec);
         let (conn_sender, mut conn_receiver) = framed.split();
@@ -76,12 +68,12 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> TcpTransportInner<S> {
 
     async fn send_for_response(&mut self, msg: Msg, socket_timeout: u64) -> Result<Msg, io::Error> {
         let (tx, rx) = oneshot::channel::<Msg>();
-        self.sender_queue_mut()
+        self.sender_queue
             .send(tx)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
             .await?;
 
-        self.socket_sender_mut()
+        self.socket_sender
             .send(msg)
             .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
             .await?;
@@ -102,9 +94,7 @@ impl UdpTransportInner {
         let socket = UdpSocket::bind("0.0.0.0:0").await?;
         socket.connect(options.to_socket_addr_string()).await?;
 
-        Ok(UdpTransportInner {
-            socket: socket,
-        })
+        Ok(UdpTransportInner { socket: socket })
     }
 
     async fn send_without_response(&mut self, msg: Msg) -> Result<(), io::Error> {
