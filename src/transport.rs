@@ -80,7 +80,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> TcpTransportInner<S> {
 
         rx.timeout(Duration::from_millis(socket_timeout))
             .await?
-            .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
+            .map_err(|e| io::Error::new(io::ErrorKind::BrokenPipe, e))
     }
 }
 
