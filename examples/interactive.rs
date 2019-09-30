@@ -23,7 +23,7 @@ async fn main() -> Result<(), RiemannClientError> {
             .description(line)
             .build();
 
-        let response = client.send_events(vec![event]).await?;
+        let response = client.send_events(vec![event]).await;
         println!("{:?}", response);
     }
     Ok(())
