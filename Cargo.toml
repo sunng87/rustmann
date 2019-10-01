@@ -13,9 +13,9 @@ edition = "2018"
 tls = ["tokio-rustls", "webpki", "webpki-roots"]
 
 [dependencies]
-tokio = "=0.2.0-alpha.5"
-futures-core-preview = "=0.3.0-alpha.18"
-futures-util-preview = "=0.3.0-alpha.18"
+tokio = "=0.2.0-alpha.6"
+futures-core-preview = "=0.3.0-alpha.19"
+futures-util-preview = "=0.3.0-alpha.19"
 protobuf = { version = "2", features = ["with-bytes"] }
 bytes = "0.4"
 derive_builder = "0.7.0"
