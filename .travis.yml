@@ -1,6 +1,6 @@
 language: rust
 rust:
-  - nightly
+  - beta
 #  - stable
 dist: trusty
 sudo: required
