@@ -27,3 +27,7 @@ webpki-roots = { version = "0.17", optional = true }
 
 [build-dependencies]
 protoc-rust = "2"
+
+[dev-dependencies]
+structopt = "0.3.3"
+structopt-derive = "0.3.3"
