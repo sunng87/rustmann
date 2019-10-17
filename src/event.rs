@@ -2,6 +2,7 @@ use crate::protos::riemann::{Attribute, Event};
 
 use protobuf::Chars;
 
+/// Riemann event data builder
 #[derive(Default)]
 pub struct EventBuilder {
     time: Option<i64>,
