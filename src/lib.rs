@@ -17,7 +17,7 @@
 //!
 //! ## Quick Start
 //!
-//! ```
+//! ```no_run
 //! use rustmann::{EventBuilder, RiemannClient, RiemannClientError, RiemannClientOptions};
 //!
 //! #[tokio::main]
