@@ -42,6 +42,10 @@
 //!     Ok(())
 //! }
 //! ```
+//!
+//! See [examples](https://github.com/sunng87/rustmann/tree/master/examples) for
+//! more usage demo.
+//!
 
 #[macro_use]
 extern crate failure;

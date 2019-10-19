@@ -6,6 +6,7 @@ use getset::Getters;
 #[cfg(feature = "tls")]
 use tokio_rustls::rustls::ClientConfig;
 
+/// Riemann connection options
 #[derive(Builder, Clone, Getters)]
 #[builder(setter(into))]
 #[builder(build_fn(skip))]

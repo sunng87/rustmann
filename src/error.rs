@@ -1,5 +1,6 @@
 use std::io;
 
+/// The error type
 #[derive(Fail, Debug)]
 pub enum RiemannClientError {
     #[fail(display = "IO error: {}", _0)]
