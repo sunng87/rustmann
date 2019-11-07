@@ -14,8 +14,8 @@ tls = ["tokio-rustls", "webpki", "webpki-roots"]
 
 [dependencies]
 tokio = "=0.2.0-alpha.6"
-futures-core-preview = "=0.3.0-alpha.19"
-futures-util-preview = "=0.3.0-alpha.19"
+futures-core = "0.3.0"
+futures-util = { version = "0.3.0", features = ["sink"] }
 protobuf = { version = "2", features = ["with-bytes"] }
 bytes = "0.4"
 derive_builder = "0.7.0"
