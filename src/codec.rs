@@ -1,6 +1,7 @@
-use bytes::{BigEndian, BufMut, ByteOrder, BytesMut};
+use byteorder::{BigEndian, ByteOrder};
+use bytes::{BufMut, BytesMut};
 use protobuf::{parse_from_carllerche_bytes, Message};
-use tokio::codec::{Decoder, Encoder};
+use tokio_util::codec::{Decoder, Encoder};
 
 use std::io;
 use std::usize;

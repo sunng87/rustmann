@@ -4,11 +4,11 @@ use std::time::Duration;
 use futures_util::stream::SplitSink;
 use futures_util::TryFutureExt;
 use protobuf::RepeatedField;
-use tokio::codec::Framed;
 use tokio::net::{TcpStream, UdpSocket};
 use tokio::prelude::*;
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::sync::oneshot::{self, Sender};
+use tokio_util::codec::Framed;
 
 #[cfg(feature = "tls")]
 use tokio_rustls::client::TlsStream;
