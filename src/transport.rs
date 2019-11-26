@@ -1,13 +1,14 @@
 use std::io;
 use std::time::Duration;
 
-use futures_util::stream::SplitSink;
-use futures_util::TryFutureExt;
+use futures_util::stream::{SplitSink, StreamExt};
+use futures_util::{SinkExt, TryFutureExt};
 use protobuf::RepeatedField;
 use tokio::net::{TcpStream, UdpSocket};
 use tokio::prelude::*;
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::sync::oneshot::{self, Sender};
+use tokio::time::timeout;
 use tokio_util::codec::Framed;
 
 #[cfg(feature = "tls")]
@@ -70,15 +71,14 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> TcpTransportInner<S> {
         let (tx, rx) = oneshot::channel::<Msg>();
         self.sender_queue
             .send(tx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-            .await?;
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         self.socket_sender
             .send(msg)
             .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
             .await?;
 
-        rx.timeout(Duration::from_millis(socket_timeout))
+        timeout(Duration::from_millis(socket_timeout), rx)
             .await?
             .map_err(|e| io::Error::new(io::ErrorKind::BrokenPipe, e))
     }
@@ -127,35 +127,39 @@ impl Transport {
 
     async fn connect_plain(options: RiemannClientOptions) -> Result<Transport, io::Error> {
         let addr = options.to_socket_addr_string();
-        TcpStream::connect(addr)
-            .timeout(Duration::from_millis(*options.connect_timeout_ms()))
-            .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
-            .await?
-            .and_then(|socket| {
-                socket.set_nodelay(true)?;
+        timeout(
+            Duration::from_millis(*options.connect_timeout_ms()),
+            TcpStream::connect(addr),
+        )
+        .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
+        .await?
+        .and_then(|socket| {
+            socket.set_nodelay(true)?;
 
-                let conn = TcpTransportInner::setup_conn(socket);
-                Ok(Transport::PLAIN(conn))
-            })
+            let conn = TcpTransportInner::setup_conn(socket);
+            Ok(Transport::PLAIN(conn))
+        })
     }
 
     #[cfg(feature = "tls")]
     async fn connect_tls(options: RiemannClientOptions) -> Result<Transport, io::Error> {
         let addr = options.to_socket_addr_string();
-        TcpStream::connect(addr)
-            .timeout(Duration::from_millis(*options.connect_timeout_ms()))
-            .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
-            .await?
-            .and_then(|socket| {
-                socket.set_nodelay(true)?;
+        timeout(
+            Duration::from_millis(*options.connect_timeout_ms()),
+            TcpStream::connect(addr),
+        )
+        .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
+        .await?
+        .and_then(|socket| {
+            socket.set_nodelay(true)?;
 
-                setup_tls_client(socket, &options)
-            })?
-            .await
-            .and_then(|socket| {
-                let conn = TcpTransportInner::setup_conn(socket);
-                Ok(Transport::TLS(conn))
-            })
+            setup_tls_client(socket, &options)
+        })?
+        .await
+        .and_then(|socket| {
+            let conn = TcpTransportInner::setup_conn(socket);
+            Ok(Transport::TLS(conn))
+        })
     }
 
     pub(crate) async fn send_events(

@@ -19,7 +19,6 @@ futures-core = "0.3.1"
 futures-util = { version = "0.3.1", features = ["sink"] }
 protobuf = { version = "2", features = ["with-bytes"] }
 bytes = "0.5"
-byteorder = "1"
 derive_builder = "0.7.0"
 getset = "0.0.7"
 failure = "0.1"

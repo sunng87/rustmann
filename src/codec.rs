@@ -1,5 +1,4 @@
-use byteorder::{BigEndian, ByteOrder};
-use bytes::{BufMut, BytesMut};
+use bytes::{Buf, BufMut, BytesMut};
 use protobuf::{parse_from_carllerche_bytes, Message};
 use tokio_util::codec::{Decoder, Encoder};
 
@@ -20,8 +19,8 @@ impl Encoder for MsgCodec {
 
         buf.reserve(4 + data.len());
 
-        buf.put_u32_be(data.len() as u32);
-        buf.put(&data);
+        buf.put_u32(data.len() as u32);
+        buf.put_slice(&data);
         Ok(())
     }
 }
@@ -32,7 +31,7 @@ impl Decoder for MsgCodec {
 
     fn decode(&mut self, buf: &mut BytesMut) -> io::Result<Option<Self::Item>> {
         if buf.len() > 4 {
-            let msg_len = BigEndian::read_u32(&buf.split_to(4)) as usize;
+            let msg_len = buf.split_to(4).get_u32() as usize;
 
             if buf.len() >= msg_len {
                 let msg = parse_from_carllerche_bytes::<Msg>(&buf.split_to(msg_len).into())
@@ -51,7 +50,7 @@ pub(crate) fn encode_for_udp(msg: &Msg) -> Result<BytesMut, io::Error> {
     let mut buf = BytesMut::new();
 
     let data = msg.write_to_bytes().map_err(io::Error::from)?;
-    buf.put(&data);
+    buf.put_slice(&data);
 
     Ok(buf)
 }
