@@ -1,6 +1,6 @@
 use crate::protos::riemann::{Attribute, Event};
 
-use protobuf::Chars;
+// use protobuf::Chars;
 
 /// Riemann event data builder
 #[derive(Default)]
@@ -83,9 +83,9 @@ impl EventBuilder {
 
     pub fn add_attribute<S: Into<String>>(mut self, key: S, value: Option<S>) -> Self {
         let mut attr = Attribute::new();
-        attr.set_key(Chars::from(key.into()));
+        attr.set_key(key.into());
         if let Some(value) = value {
-            attr.set_value(Chars::from(value.into()));
+            attr.set_value(value.into());
         }
         self.attributes.push(attr);
         self
@@ -99,22 +99,22 @@ impl EventBuilder {
         }
 
         if let Some(state) = self.state {
-            event.set_state(Chars::from(state));
+            event.set_state(state);
         }
 
         if let Some(service) = self.service {
-            event.set_service(Chars::from(service));
+            event.set_service(service);
         }
 
         if let Some(host) = self.host {
-            event.set_host(Chars::from(host));
+            event.set_host(host);
         }
 
         if let Some(description) = self.description {
-            event.set_description(Chars::from(description));
+            event.set_description(description);
         }
 
-        event.set_tags(self.tags.iter().map(|t| Chars::from(t.as_ref())).collect());
+        event.set_tags(self.tags.iter().map(|t| t.into()).collect());
 
         if let Some(ttl) = self.ttl {
             event.set_ttl(ttl);

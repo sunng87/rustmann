@@ -7,7 +7,7 @@ use std::task::{Context, Poll};
 
 use futures_core::future::BoxFuture;
 use futures_util::FutureExt;
-use protobuf::Chars;
+// use protobuf::Chars;
 
 use crate::error::RiemannClientError;
 use crate::options::RiemannClientOptions;
@@ -119,7 +119,7 @@ impl RiemannClient {
     /// Query riemann server by riemann query syntax via this client.
     pub async fn send_query<S>(&mut self, query_string: S) -> Result<Vec<Event>, RiemannClientError>
     where
-        S: AsRef<str>,
+        S: Into<String>,
     {
         let timeout = *self.inner.options.socket_timeout_ms();
         let state = self.inner.state.clone();
@@ -129,7 +129,8 @@ impl RiemannClient {
         let mut conn = conn_wrapper.lock().unwrap();
 
         let mut query = Query::new();
-        query.set_string(Chars::from(query_string.as_ref()));
+        query.set_string(query_string.into());
+        // query.set_string(Chars::from(query_string.as_ref()));
 
         conn.query(&query, timeout)
             .await
