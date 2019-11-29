@@ -1,7 +1,8 @@
-use tokio::codec::{FramedRead, LinesCodec};
+use futures_util::stream::StreamExt;
+
 use tokio::io::stdin;
-use tokio::prelude::*;
 use tokio::sync::mpsc;
+use tokio_util::codec::{FramedRead, LinesCodec};
 
 use rustmann::{EventBuilder, RiemannClient, RiemannClientError, RiemannClientOptions};
 
@@ -10,10 +11,14 @@ async fn main() -> Result<(), RiemannClientError> {
     let mut client = RiemannClient::new(&RiemannClientOptions::default());
     let mut input = FramedRead::new(stdin(), LinesCodec::new());
 
-    let (mut tx, mut rx) = mpsc::unbounded_channel();
+    let (tx, mut rx) = mpsc::unbounded_channel();
 
     tokio::spawn(async move {
-        tx.send_all(&mut input).await.unwrap();
+        while let Some(line) = input.next().await {
+            if let Err(_) = tx.send(line) {
+                break;
+            };
+        }
     });
 
     while let Some(Ok(line)) = rx.next().await {
