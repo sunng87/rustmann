@@ -74,7 +74,7 @@ impl RiemannClientOptionsBuilder {
             socket_timeout_ms: self.connect_timeout_ms.unwrap_or(3000),
             use_udp: udp,
             #[cfg(feature = "tls")]
-            use_tls: use_tls,
+            use_tls,
             #[cfg(feature = "tls")]
             tls_config: self.get_tls_config(),
         }

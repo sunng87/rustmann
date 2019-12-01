@@ -49,7 +49,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> TcpTransportInner<S> {
                 let cb = cb_queue_rx.recv().await;
                 if let (Some(Ok(frame)), Some(cb)) = (frame, cb) {
                     let r = cb.send(frame);
-                    if let Err(_) = r {
+                    if r.is_err() {
                         // eprintln!("failed to deliver msg to callback {:?}", e);
                         break;
                     }
@@ -94,7 +94,7 @@ impl UdpTransportInner {
         let socket = UdpSocket::bind("0.0.0.0:0").await?;
         socket.connect(options.to_socket_addr_string()).await?;
 
-        Ok(UdpTransportInner { socket: socket })
+        Ok(UdpTransportInner { socket })
     }
 
     async fn send_without_response(&mut self, msg: Msg) -> Result<(), io::Error> {

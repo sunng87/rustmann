@@ -14,14 +14,18 @@ async fn main() -> Result<(), RiemannClientError> {
     let (tx, mut rx) = mpsc::unbounded_channel();
 
     tokio::spawn(async move {
-        while let Some(line) = input.next().await {
-            if let Err(_) = tx.send(line) {
+        while let Some(line_result) = input.next().await {
+            if tx.send(line_result).is_err() {
                 break;
             };
         }
     });
 
     while let Some(Ok(line)) = rx.next().await {
+        if line == "quit" {
+            break;
+        }
+
         let event = EventBuilder::new()
             .host("thinkless")
             .service("rustmann_interactive")

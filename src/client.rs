@@ -43,7 +43,7 @@ impl Future for Inner {
                     // connected
                     let conn = Arc::new(Mutex::new(conn));
                     *inner_state = ClientState::Connected(conn.clone());
-                    Poll::Ready(Ok(conn.clone()))
+                    Poll::Ready(Ok(conn))
                 }
                 Poll::Ready(Err(e)) => {
                     // failed to connect, reset to disconnected
@@ -64,7 +64,7 @@ impl Future for Inner {
                         // connected
                         let conn = Arc::new(Mutex::new(conn));
                         *inner_state = ClientState::Connected(conn.clone());
-                        Poll::Ready(Ok(conn.clone()))
+                        Poll::Ready(Ok(conn))
                     }
                     Poll::Ready(Err(e)) => {
                         // failed to connect, return error
