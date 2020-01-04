@@ -17,7 +17,7 @@ tokio = { version = "0.2", features = ["full"] }
 tokio-util = { version = "0.2", features = ["full"] }
 futures-core = "0.3.1"
 futures-util = { version = "0.3.1", features = ["sink"] }
-protobuf = { version = "2" }
+protobuf = { version = "2", features = ["with-bytes"] }
 bytes = "0.5"
 derive_builder = "0.7.0"
 getset = "0.0.7"

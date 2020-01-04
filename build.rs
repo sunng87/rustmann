@@ -14,8 +14,8 @@ fn main() {
         input: &["protos/riemann.proto"],
         includes: &["protos"],
         customize: Customize {
-            // carllerche_bytes_for_bytes: Some(true),
-            // carllerche_bytes_for_string: Some(true),
+            carllerche_bytes_for_bytes: Some(true),
+            carllerche_bytes_for_string: Some(true),
             ..Default::default()
         },
     })
