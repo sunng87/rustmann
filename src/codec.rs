@@ -34,7 +34,7 @@ impl Decoder for MsgCodec {
             let msg_len = buf.split_to(4).get_u32() as usize;
 
             if buf.len() >= msg_len {
-                let msg = parse_from_carllerche_bytes::<Msg>(&buf.split_to(msg_len).into())
+                let msg = parse_from_carllerche_bytes::<Msg>(&buf.split_to(msg_len).to_bytes())
                     .map_err(io::Error::from)?;
                 Ok(Some(msg))
             } else {
