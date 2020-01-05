@@ -1,6 +1,6 @@
 [package]
 name = "rustmann"
-version = "0.3.1"
+version = "0.3.2-alpha.0"
 authors = ["Ning Sun <sunng@protonmail.com>"]
 description = "Rust/Tokio client for Riemann"
 license = "MIT/Apache-2.0"
