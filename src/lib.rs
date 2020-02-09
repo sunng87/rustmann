@@ -56,6 +56,7 @@ mod error;
 mod event;
 mod options;
 pub mod protos;
+mod state;
 #[cfg(feature = "tls")]
 mod tls;
 mod transport;
