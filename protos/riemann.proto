@@ -1,4 +1,5 @@
 syntax = "proto2";
+package riemann;
 
 // copied from official java client
 // https://github.com/riemann/riemann-java-client/blob/master/riemann-java-client/src/main/proto/riemann/proto.proto
