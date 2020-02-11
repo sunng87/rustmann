@@ -3,7 +3,6 @@ use std::time::Duration;
 
 use futures_util::stream::{SplitSink, StreamExt};
 use futures_util::{SinkExt, TryFutureExt};
-use protobuf::RepeatedField;
 use tokio::net::{TcpStream, UdpSocket};
 use tokio::prelude::*;
 use tokio::sync::mpsc::{self, UnboundedSender};
@@ -164,11 +163,13 @@ impl Transport {
 
     pub(crate) async fn send_events(
         &mut self,
-        events: &[Event],
+        events: Vec<Event>,
         socket_timeout: u64,
     ) -> Result<Msg, io::Error> {
-        let mut msg = Msg::new();
-        msg.set_events(RepeatedField::from_slice(events));
+        let msg = Msg {
+            events: events,
+            ..Default::default()
+        };
 
         match self {
             Transport::PLAIN(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
@@ -176,8 +177,10 @@ impl Transport {
             Transport::TLS(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
             Transport::UDP(ref mut inner) => {
                 inner.send_without_response(msg).await?;
-                let mut ok_msg = Msg::new();
-                ok_msg.set_ok(true);
+                let ok_msg = Msg {
+                    ok: Some(true),
+                    ..Default::default()
+                };
                 Ok(ok_msg)
             }
         }
@@ -185,11 +188,13 @@ impl Transport {
 
     pub(crate) async fn query(
         &mut self,
-        query: &Query,
+        query: Query,
         socket_timeout: u64,
     ) -> Result<Msg, io::Error> {
-        let mut msg = Msg::new();
-        msg.set_query(query.clone());
+        let msg = Msg {
+            query: Some(query),
+            ..Default::default()
+        };
 
         match self {
             Transport::PLAIN(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,

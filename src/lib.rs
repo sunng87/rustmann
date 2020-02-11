@@ -55,7 +55,11 @@ mod codec;
 mod error;
 mod event;
 mod options;
-pub mod protos;
+pub mod protos {
+    pub mod riemann {
+        include!(concat!(env!("OUT_DIR"), "/riemann.rs"));
+    }
+}
 mod state;
 #[cfg(feature = "tls")]
 mod tls;

@@ -1,5 +1,5 @@
 use bytes::{Buf, BufMut, BytesMut};
-use protobuf::{parse_from_carllerche_bytes, Message};
+use prost::Message;
 use tokio_util::codec::{Decoder, Encoder};
 
 use std::io;
@@ -15,12 +15,10 @@ impl Encoder for MsgCodec {
     type Error = io::Error;
 
     fn encode(&mut self, msg: Self::Item, buf: &mut BytesMut) -> io::Result<()> {
-        let data = msg.write_to_bytes().map_err(io::Error::from)?;
+        let size = msg.encoded_len();
+        buf.put_u32(size as u32);
 
-        buf.reserve(4 + data.len());
-
-        buf.put_u32(data.len() as u32);
-        buf.put_slice(&data);
+        msg.encode(buf).map_err(io::Error::from)?;
         Ok(())
     }
 }
@@ -34,8 +32,7 @@ impl Decoder for MsgCodec {
             let msg_len = buf.split_to(4).get_u32() as usize;
 
             if buf.len() >= msg_len {
-                let msg = parse_from_carllerche_bytes::<Msg>(&buf.split_to(msg_len).to_bytes())
-                    .map_err(io::Error::from)?;
+                let msg = Msg::decode(buf.split_to(msg_len)).map_err(io::Error::from)?;
                 Ok(Some(msg))
             } else {
                 Ok(None)
@@ -49,8 +46,6 @@ impl Decoder for MsgCodec {
 pub(crate) fn encode_for_udp(msg: &Msg) -> Result<BytesMut, io::Error> {
     let mut buf = BytesMut::new();
 
-    let data = msg.write_to_bytes().map_err(io::Error::from)?;
-    buf.put_slice(&data);
-
+    msg.encode(&mut buf).map_err(io::Error::from)?;
     Ok(buf)
 }

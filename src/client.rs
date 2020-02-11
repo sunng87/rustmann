@@ -1,7 +1,5 @@
 use std::sync::{Arc, Mutex};
 
-use protobuf::Chars;
-
 use crate::error::RiemannClientError;
 use crate::options::RiemannClientOptions;
 use crate::protos::riemann::{Event, Query};
@@ -32,17 +30,19 @@ impl RiemannClient {
         let conn_wrapper = inner.await?;
         let mut conn = conn_wrapper.lock().unwrap();
 
-        conn.send_events(&events, timeout)
+        conn.send_events(events, timeout)
             .await
             .map_err(move |e| {
                 *state.lock().unwrap() = ClientState::Disconnected;
                 RiemannClientError::from(e)
             })
             .and_then(|msg| {
-                if msg.get_ok() {
+                if msg.ok.unwrap_or(false) {
                     Ok(())
                 } else {
-                    Err(RiemannClientError::RiemannError(msg.get_error().to_owned()))
+                    Err(RiemannClientError::RiemannError(
+                        msg.error.unwrap_or_else(|| "".to_owned()),
+                    ))
                 }
             })
     }
@@ -59,20 +59,23 @@ impl RiemannClient {
         let conn_wrapper = inner.await?;
         let mut conn = conn_wrapper.lock().unwrap();
 
-        let mut query = Query::new();
-        query.set_string(Chars::from(query_string.as_ref()));
+        let query = Query {
+            string: Some(query_string.as_ref().to_owned()),
+        };
 
-        conn.query(&query, timeout)
+        conn.query(query, timeout)
             .await
             .map_err(move |e| {
                 *state.lock().unwrap() = ClientState::Disconnected;
                 RiemannClientError::from(e)
             })
             .and_then(|msg| {
-                if msg.get_ok() {
-                    Ok(Vec::from(msg.get_events()))
+                if msg.ok.unwrap_or(false) {
+                    Ok(msg.events)
                 } else {
-                    Err(RiemannClientError::RiemannError(msg.get_error().to_owned()))
+                    Err(RiemannClientError::RiemannError(
+                        msg.error.unwrap_or_else(|| "".to_owned()),
+                    ))
                 }
             })
     }
