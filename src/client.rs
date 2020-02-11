@@ -30,7 +30,7 @@ impl RiemannClient {
         let conn_wrapper = inner.await?;
         let mut conn = conn_wrapper.lock().unwrap();
 
-        conn.send_events(&events, timeout)
+        conn.send_events(events, timeout)
             .await
             .map_err(move |e| {
                 *state.lock().unwrap() = ClientState::Disconnected;
@@ -63,7 +63,7 @@ impl RiemannClient {
             string: Some(query_string.as_ref().to_owned()),
         };
 
-        conn.query(&query, timeout)
+        conn.query(query, timeout)
             .await
             .map_err(move |e| {
                 *state.lock().unwrap() = ClientState::Disconnected;

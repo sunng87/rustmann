@@ -163,11 +163,11 @@ impl Transport {
 
     pub(crate) async fn send_events(
         &mut self,
-        events: &[Event],
+        events: Vec<Event>,
         socket_timeout: u64,
     ) -> Result<Msg, io::Error> {
         let msg = Msg {
-            events: events.to_vec(),
+            events: events,
             ..Default::default()
         };
 
@@ -188,11 +188,11 @@ impl Transport {
 
     pub(crate) async fn query(
         &mut self,
-        query: &Query,
+        query: Query,
         socket_timeout: u64,
     ) -> Result<Msg, io::Error> {
         let msg = Msg {
-            query: Some(query.clone()),
+            query: Some(query),
             ..Default::default()
         };
 
