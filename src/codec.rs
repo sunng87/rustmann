@@ -7,8 +7,10 @@ use std::usize;
 
 use crate::protos::riemann::Msg;
 
-#[derive(Debug)]
-pub struct MsgCodec;
+#[derive(Debug, Default)]
+pub struct MsgCodec {
+    len: Option<usize>,
+}
 
 impl Encoder for MsgCodec {
     type Item = Msg;
@@ -28,17 +30,22 @@ impl Decoder for MsgCodec {
     type Error = io::Error;
 
     fn decode(&mut self, buf: &mut BytesMut) -> io::Result<Option<Self::Item>> {
-        if buf.len() > 4 {
-            let msg_len = buf.split_to(4).get_u32() as usize;
-
-            if buf.len() >= msg_len {
+        if let Some(msg_len) = self.len {
+            if buf.remaining() >= msg_len {
                 let msg = Msg::decode(buf.split_to(msg_len)).map_err(io::Error::from)?;
+                self.len = None;
                 Ok(Some(msg))
             } else {
                 Ok(None)
             }
         } else {
-            Ok(None)
+            if buf.remaining() > 4 {
+                let msg_len = buf.split_to(4).get_u32() as usize;
+                self.len = Some(msg_len);
+                self.decode(buf)
+            } else {
+                Ok(None)
+            }
         }
     }
 }
