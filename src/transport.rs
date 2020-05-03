@@ -38,7 +38,7 @@ where
 
 impl<S: AsyncRead + AsyncWrite + Unpin + Send> TcpTransportInner<S> {
     fn setup_conn(socket: S) -> TcpTransportInner<S> {
-        let framed = Framed::new(socket, MsgCodec);
+        let framed = Framed::new(socket, MsgCodec::default());
         let (conn_sender, mut conn_receiver) = framed.split();
         let (cb_queue_tx, mut cb_queue_rx) = mpsc::unbounded_channel::<Sender<Msg>>();
 

@@ -47,9 +47,6 @@
 //! more usage demo.
 //!
 
-#[macro_use]
-extern crate failure;
-
 mod client;
 mod codec;
 mod error;

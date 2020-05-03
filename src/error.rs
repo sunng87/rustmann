@@ -1,16 +1,12 @@
 use std::io;
 
-/// The error type
-#[derive(Fail, Debug)]
-pub enum RiemannClientError {
-    #[fail(display = "IO error: {}", _0)]
-    IoError(#[fail(cause)] io::Error),
-    #[fail(display = "Riemann error: {}", _0)]
-    RiemannError(String),
-}
+use thiserror::Error;
 
-impl From<io::Error> for RiemannClientError {
-    fn from(e: io::Error) -> RiemannClientError {
-        RiemannClientError::IoError(e)
-    }
+/// The error type
+#[derive(Error, Debug)]
+pub enum RiemannClientError {
+    #[error("IO error: {0}")]
+    IoError(#[from] io::Error),
+    #[error("Riemann error: {0}")]
+    RiemannError(String),
 }
