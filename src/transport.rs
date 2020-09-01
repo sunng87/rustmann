@@ -167,7 +167,7 @@ impl Transport {
         socket_timeout: u64,
     ) -> Result<Msg, io::Error> {
         let msg = Msg {
-            events: events,
+            events,
             ..Default::default()
         };
 

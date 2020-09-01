@@ -38,14 +38,12 @@ impl Decoder for MsgCodec {
             } else {
                 Ok(None)
             }
+        } else if buf.remaining() > 4 {
+            let msg_len = buf.split_to(4).get_u32() as usize;
+            self.len = Some(msg_len);
+            self.decode(buf)
         } else {
-            if buf.remaining() > 4 {
-                let msg_len = buf.split_to(4).get_u32() as usize;
-                self.len = Some(msg_len);
-                self.decode(buf)
-            } else {
-                Ok(None)
-            }
+            Ok(None)
         }
     }
 }
