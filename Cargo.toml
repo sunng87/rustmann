@@ -11,6 +11,7 @@ edition = "2018"
 
 [features]
 tls = ["tokio-rustls", "webpki", "webpki-roots"]
+metrics = []
 
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
@@ -20,9 +21,13 @@ prost = "0.7"
 derive_builder = "0.9.0"
 getset = "0.1.1"
 thiserror = "1"
+# tls
 tokio-rustls = { version = "0.22.0", optional = true }
 webpki = { version = "0.21", optional = true  }
 webpki-roots = { version = "0.21", optional = true }
+
+# metrics
+metrics = { version = "0.12.1", optional = true }
 
 [build-dependencies]
 prost-build = "0.7"
