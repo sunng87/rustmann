@@ -1,7 +1,7 @@
 use metrics_core::{Builder, Drain, Key, Observe, Observer};
 
 use crate::protos::riemann::Event;
-use crate::{RiemannClient, RiemannClientError};
+use crate::{EventBuilder, RiemannClient, RiemannClientError};
 
 pub struct RiemannExporter<C> {
     client: RiemannClient,
@@ -11,10 +11,12 @@ pub struct RiemannExporter<C> {
 
 #[derive(Default)]
 pub struct RiemannObserver {
-    // TODO: tags, service, host
+    host: String,
+    tags: Vec<String>,
     events: Vec<Event>,
 }
 
+// TODO: tags, service, host
 pub struct RiemannObserverBuilder {}
 
 impl Builder for RiemannObserverBuilder {
@@ -26,11 +28,34 @@ impl Builder for RiemannObserverBuilder {
 }
 
 impl Observer for RiemannObserver {
-    fn observe_counter(&mut self, key: Key, value: u64) {}
+    fn observe_counter(&mut self, key: Key, value: u64) {
+        let event = self.create_event(key.name().into_owned(), value as f64);
+        self.events.push(event);
+    }
 
-    fn observe_gauge(&mut self, key: Key, value: i64) {}
+    fn observe_gauge(&mut self, key: Key, value: i64) {
+        let event = self.create_event(key.name().into_owned(), value as f64);
+        self.events.push(event);
+    }
 
-    fn observe_histogram(&mut self, key: Key, values: &[u64]) {}
+    fn observe_histogram(&mut self, key: Key, values: &[u64]) {
+        // TODO: p99, max, mean
+    }
+}
+
+impl RiemannObserver {
+    fn create_event(&self, service: String, value: f64) -> Event {
+        let mut eb = EventBuilder::new()
+            .service(service)
+            .metric_d(value)
+            .host(&self.host);
+
+        for s in &self.tags {
+            eb = eb.add_tag(s);
+        }
+
+        eb.build()
+    }
 }
 
 impl Drain<Vec<Event>> for RiemannObserver {
@@ -64,7 +89,7 @@ where
             self.controller.observe(&mut observer);
             let events = observer.drain();
 
-            self.client.send_events(events);
+            let _ = self.client.send_events(events).await;
         }
     }
 }
