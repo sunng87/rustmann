@@ -57,6 +57,8 @@ pub mod protos {
         include!(concat!(env!("OUT_DIR"), "/riemann.rs"));
     }
 }
+#[cfg(feature = "metrics-exporter")]
+mod metrics;
 mod state;
 #[cfg(feature = "tls")]
 mod tls;

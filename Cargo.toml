@@ -11,7 +11,7 @@ edition = "2018"
 
 [features]
 tls = ["tokio-rustls", "webpki", "webpki-roots"]
-metrics = []
+metrics-exporter = ["metrics-core"]
 
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
@@ -27,7 +27,7 @@ webpki = { version = "0.21", optional = true  }
 webpki-roots = { version = "0.21", optional = true }
 
 # metrics
-metrics = { version = "0.12.1", optional = true }
+metrics-core = { version = "0.5.2", optional = true }
 
 [build-dependencies]
 prost-build = "0.7"
