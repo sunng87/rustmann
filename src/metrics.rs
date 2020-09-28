@@ -1,3 +1,6 @@
+use std::iter::Sum;
+
+use derive_builder::Builder as DeriveBuilder;
 use metrics_core::{Builder, Drain, Key, Observe, Observer};
 
 use crate::protos::riemann::Event;
@@ -16,8 +19,11 @@ pub struct RiemannObserver {
     events: Vec<Event>,
 }
 
-// TODO: tags, service, host
-pub struct RiemannObserverBuilder {}
+#[derive(DeriveBuilder)]
+pub struct RiemannObserverBuilder {
+    host: String,
+    tags: Vec<String>,
+}
 
 impl Builder for RiemannObserverBuilder {
     type Output = RiemannObserver;
@@ -40,6 +46,46 @@ impl Observer for RiemannObserver {
 
     fn observe_histogram(&mut self, key: Key, values: &[u64]) {
         // TODO: p99, max, mean
+        let size = values.len();
+
+        if size == 0 {
+            return;
+        }
+
+        let mut value_vec = Vec::from(values);
+        value_vec.sort();
+
+        // min
+        self.events
+            .push(self.create_event(format!("{}.min", key.name()), values[0] as f64));
+        // max
+        self.events
+            .push(self.create_event(format!("{}.max", key.name()), values[size - 1] as f64));
+        // mean
+        self.events.push(self.create_event(
+            format!("{}.mean", key.name()),
+            value_vec.iter().sum::<u64>() as f64 / size as f64,
+        ));
+        // p50
+        self.events.push(self.create_event(
+            format!("{}.p50", key.name()),
+            values[(size as f64 * 0.5) as usize] as f64,
+        ));
+        // p90
+        self.events.push(self.create_event(
+            format!("{}.p90", key.name()),
+            values[(size as f64 * 0.9) as usize] as f64,
+        ));
+        // p99
+        self.events.push(self.create_event(
+            format!("{}.p99", key.name()),
+            values[(size as f64 * 0.99) as usize] as f64,
+        ));
+        // p999
+        self.events.push(self.create_event(
+            format!("{}.p999", key.name()),
+            values[(size as f64 * 0.999) as usize] as f64,
+        ));
     }
 }
 
