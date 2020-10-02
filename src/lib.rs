@@ -71,3 +71,6 @@ pub use crate::options::{RiemannClientOptions, RiemannClientOptionsBuilder};
 
 #[cfg(feature = "tls")]
 pub use tokio_rustls::rustls::ClientConfig;
+
+#[cfg(feature = "metrics-exporter")]
+pub use crate::metrics::{RiemannExporter, RiemannObserver, RiemannObserverBuilder};

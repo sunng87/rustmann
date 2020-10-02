@@ -1,5 +1,3 @@
-use std::iter::Sum;
-
 use derive_builder::Builder as DeriveBuilder;
 use metrics_core::{Builder, Drain, Key, Observe, Observer};
 
@@ -20,6 +18,8 @@ pub struct RiemannObserver {
 }
 
 #[derive(DeriveBuilder)]
+#[builder(setter(into))]
+#[builder(build_fn(skip))]
 pub struct RiemannObserverBuilder {
     host: String,
     tags: Vec<String>,
@@ -29,7 +29,11 @@ impl Builder for RiemannObserverBuilder {
     type Output = RiemannObserver;
 
     fn build(&self) -> Self::Output {
-        RiemannObserver::default()
+        RiemannObserver {
+            host: self.host.clone(),
+            tags: self.tags.clone(),
+            events: Vec::new(),
+        }
     }
 }
 
