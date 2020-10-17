@@ -14,7 +14,7 @@ tls = ["tokio-rustls", "webpki", "webpki-roots"]
 
 [dependencies]
 tokio = { version = "0.3", features = ["full"] }
-tokio-util = { version = "0.3", features = ["full"] }
+tokio-util = { version = "0.4", features = ["full"] }
 futures-core = "0.3.1"
 futures-util = { version = "0.3.1", features = ["sink"] }
 prost = "0.6"

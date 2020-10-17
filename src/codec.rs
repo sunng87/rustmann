@@ -12,11 +12,10 @@ pub struct MsgCodec {
     len: Option<usize>,
 }
 
-impl Encoder for MsgCodec {
-    type Item = Msg;
+impl Encoder<Msg> for MsgCodec {
     type Error = io::Error;
 
-    fn encode(&mut self, msg: Self::Item, buf: &mut BytesMut) -> io::Result<()> {
+    fn encode(&mut self, msg: Msg, buf: &mut BytesMut) -> io::Result<()> {
         let size = msg.encoded_len();
         buf.put_u32(size as u32);
 
