@@ -1,4 +1,4 @@
-use futures_util::stream::StreamExt;
+use futures::stream::StreamExt;
 
 use tokio::io::stdin;
 use tokio::sync::mpsc;

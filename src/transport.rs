@@ -1,8 +1,8 @@
 use std::io;
 use std::time::Duration;
 
-use futures_util::stream::{SplitSink, StreamExt};
-use futures_util::{SinkExt, TryFutureExt};
+use futures::stream::{SplitSink, StreamExt};
+use futures::{SinkExt, TryFutureExt};
 use tokio::net::{TcpStream, UdpSocket};
 use tokio::prelude::*;
 use tokio::sync::mpsc::{self, UnboundedSender};

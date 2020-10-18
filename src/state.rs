@@ -5,8 +5,8 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 
-use futures_core::future::BoxFuture;
-use futures_util::FutureExt;
+use futures::future::BoxFuture;
+use futures::FutureExt;
 
 use crate::error::RiemannClientError;
 use crate::options::RiemannClientOptions;
