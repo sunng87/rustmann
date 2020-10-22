@@ -1,4 +1,4 @@
-use bytes::{Buf, BufMut, BytesMut};
+use prost::bytes::{Buf, BufMut, BytesMut};
 use prost::Message;
 use tokio_util::codec::{Decoder, Encoder};
 
