@@ -7,3 +7,4 @@ dist: trusty
 sudo: required
 before_script:
   - sudo apt-get install protobuf-compiler
+script: cargo test --all-features
