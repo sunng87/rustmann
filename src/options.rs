@@ -49,7 +49,7 @@ impl RiemannClientOptionsBuilder {
     fn get_tls_config(&self) -> Option<Arc<ClientConfig>> {
         self.tls_config
             .as_ref()
-            .map(|v| v.clone())
+            .cloned()
             .unwrap_or_else(|| {
                 if self.tls_enabled() {
                     Some(default_tls_config())

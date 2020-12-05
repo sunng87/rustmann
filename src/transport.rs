@@ -155,9 +155,9 @@ impl Transport {
             setup_tls_client(socket, &options)
         })?
         .await
-        .and_then(|socket| {
+        .map(|socket| {
             let conn = TcpTransportInner::setup_conn(socket);
-            Ok(Transport::TLS(conn))
+            Transport::TLS(conn)
         })
     }
 
