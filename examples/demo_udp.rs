@@ -8,7 +8,7 @@ async fn main() -> Result<(), RiemannClientError> {
         .use_udp(true)
         .build();
 
-    let mut client = RiemannClient::new(&options);
+    let client = RiemannClient::new(&options);
 
     let event = EventBuilder::new()
         .service("riemann_test")

@@ -2,7 +2,7 @@ use rustmann::{EventBuilder, RiemannClient, RiemannClientError, RiemannClientOpt
 
 #[tokio::main]
 async fn main() -> Result<(), RiemannClientError> {
-    let mut client = RiemannClient::new(&RiemannClientOptions::default());
+    let client = RiemannClient::new(&RiemannClientOptions::default());
 
     let event = EventBuilder::new()
         .service("riemann_test")
