@@ -24,7 +24,6 @@ impl RiemannClient {
         }
     }
 
-    // FIXME:
     /// Send events to riemann via this client.
     pub async fn send_events(&self, events: Vec<Event>) -> Result<(), RiemannClientError> {
         let timeout = *self.options.socket_timeout_ms();
@@ -35,14 +34,8 @@ impl RiemannClient {
             i.await?
         };
 
-        conn.send_events(events, timeout)
-            .await
-            .map_err(move |e| {
-                // FIXME
-                //                inner.state = ClientState::Disconnected;
-                RiemannClientError::from(e)
-            })
-            .and_then(|msg| {
+        match conn.send_events(events, timeout).await {
+            Ok(msg) => {
                 if msg.ok.unwrap_or(false) {
                     Ok(())
                 } else {
@@ -50,11 +43,19 @@ impl RiemannClient {
                         msg.error.unwrap_or_else(|| "".to_owned()),
                     ))
                 }
-            })
+            }
+            Err(e) => {
+                let mut inner = self.inner.lock().await;
+                let i = inner.deref_mut();
+                i.state = ClientState::Disconnected;
+
+                Err(RiemannClientError::from(e))
+            }
+        }
     }
 
     /// Query riemann server by riemann query syntax via this client.
-    pub async fn send_query<S>(&mut self, query_string: S) -> Result<Vec<Event>, RiemannClientError>
+    pub async fn send_query<S>(&self, query_string: S) -> Result<Vec<Event>, RiemannClientError>
     where
         S: AsRef<str>,
     {
@@ -70,13 +71,8 @@ impl RiemannClient {
             string: Some(query_string.as_ref().to_owned()),
         };
 
-        conn.query(query, timeout)
-            .await
-            .map_err(move |e| {
-                // *state.lock().unwrap() = ClientState::Disconnected;
-                RiemannClientError::from(e)
-            })
-            .and_then(|msg| {
+        match conn.query(query, timeout).await {
+            Ok(msg) => {
                 if msg.ok.unwrap_or(false) {
                     Ok(msg.events)
                 } else {
@@ -84,6 +80,14 @@ impl RiemannClient {
                         msg.error.unwrap_or_else(|| "".to_owned()),
                     ))
                 }
-            })
+            }
+            Err(e) => {
+                let mut inner = self.inner.lock().await;
+                let i = inner.deref_mut();
+                i.state = ClientState::Disconnected;
+
+                Err(RiemannClientError::from(e))
+            }
+        }
     }
 }
