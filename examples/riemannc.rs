@@ -64,7 +64,7 @@ async fn main() -> Result<(), RiemannClientError> {
 
     match opt {
         Opt::Query { query, conn } => {
-            let mut client = RiemannClient::new(&to_client_options(&conn));
+            let client = RiemannClient::new(&to_client_options(&conn));
             let resp = client.send_query(query).await?;
             println!("{:?}", resp);
         }
@@ -78,7 +78,7 @@ async fn main() -> Result<(), RiemannClientError> {
             tags,
             conn,
         } => {
-            let mut client = RiemannClient::new(&to_client_options(&conn));
+            let client = RiemannClient::new(&to_client_options(&conn));
 
             let mut event_builder = EventBuilder::new();
             event_builder = event_builder.service(service).metric_d(metric);

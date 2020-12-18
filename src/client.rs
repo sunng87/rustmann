@@ -1,42 +1,41 @@
-use std::sync::{Arc, Mutex};
+use std::ops::DerefMut;
+
+use futures::lock::Mutex;
 
 use crate::error::RiemannClientError;
 use crate::options::RiemannClientOptions;
 use crate::protos::riemann::{Event, Query};
 use crate::state::{ClientState, Inner};
 
-#[derive(Clone)]
 pub struct RiemannClient {
-    inner: Inner,
+    inner: Mutex<Inner>,
+    options: RiemannClientOptions,
 }
 
 impl RiemannClient {
     /// Create `RiemannClient` from options.
     pub fn new(options: &RiemannClientOptions) -> Self {
         RiemannClient {
-            inner: Inner {
-                state: Arc::new(Mutex::new(ClientState::Disconnected)),
+            inner: Mutex::new(Inner {
+                state: ClientState::Disconnected,
                 options: options.clone(),
-            },
+            }),
+            options: options.clone(),
         }
     }
 
     /// Send events to riemann via this client.
-    pub async fn send_events(&mut self, events: Vec<Event>) -> Result<(), RiemannClientError> {
-        let timeout = *self.inner.options.socket_timeout_ms();
-        let state = self.inner.state.clone();
-        let inner = &mut self.inner;
+    pub async fn send_events(&self, events: Vec<Event>) -> Result<(), RiemannClientError> {
+        let timeout = *self.options.socket_timeout_ms();
 
-        let conn_wrapper = inner.await?;
-        let mut conn = conn_wrapper.lock().unwrap();
+        let conn = {
+            let mut inner = self.inner.lock().await;
+            let i = inner.deref_mut();
+            i.await?
+        };
 
-        conn.send_events(events, timeout)
-            .await
-            .map_err(move |e| {
-                *state.lock().unwrap() = ClientState::Disconnected;
-                RiemannClientError::from(e)
-            })
-            .and_then(|msg| {
+        match conn.send_events(events, timeout).await {
+            Ok(msg) => {
                 if msg.ok.unwrap_or(false) {
                     Ok(())
                 } else {
@@ -44,32 +43,36 @@ impl RiemannClient {
                         msg.error.unwrap_or_else(|| "".to_owned()),
                     ))
                 }
-            })
+            }
+            Err(e) => {
+                let mut inner = self.inner.lock().await;
+                let i = inner.deref_mut();
+                i.state = ClientState::Disconnected;
+
+                Err(RiemannClientError::from(e))
+            }
+        }
     }
 
     /// Query riemann server by riemann query syntax via this client.
-    pub async fn send_query<S>(&mut self, query_string: S) -> Result<Vec<Event>, RiemannClientError>
+    pub async fn send_query<S>(&self, query_string: S) -> Result<Vec<Event>, RiemannClientError>
     where
         S: AsRef<str>,
     {
-        let timeout = *self.inner.options.socket_timeout_ms();
-        let state = self.inner.state.clone();
-        let inner = &mut self.inner;
+        let timeout = *self.options.socket_timeout_ms();
 
-        let conn_wrapper = inner.await?;
-        let mut conn = conn_wrapper.lock().unwrap();
+        let conn = {
+            let mut inner = self.inner.lock().await;
+            let i = inner.deref_mut();
+            i.await?
+        };
 
         let query = Query {
             string: Some(query_string.as_ref().to_owned()),
         };
 
-        conn.query(query, timeout)
-            .await
-            .map_err(move |e| {
-                *state.lock().unwrap() = ClientState::Disconnected;
-                RiemannClientError::from(e)
-            })
-            .and_then(|msg| {
+        match conn.query(query, timeout).await {
+            Ok(msg) => {
                 if msg.ok.unwrap_or(false) {
                     Ok(msg.events)
                 } else {
@@ -77,6 +80,14 @@ impl RiemannClient {
                         msg.error.unwrap_or_else(|| "".to_owned()),
                     ))
                 }
-            })
+            }
+            Err(e) => {
+                let mut inner = self.inner.lock().await;
+                let i = inner.deref_mut();
+                i.state = ClientState::Disconnected;
+
+                Err(RiemannClientError::from(e))
+            }
+        }
     }
 }

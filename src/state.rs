@@ -1,8 +1,7 @@
 use std::future::Future;
 use std::io;
-use std::ops::DerefMut;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use futures::future::BoxFuture;
@@ -13,34 +12,32 @@ use crate::options::RiemannClientOptions;
 use crate::transport::Transport;
 
 pub(crate) enum ClientState {
-    Connected(Arc<Mutex<Transport>>),
+    Connected(Arc<Transport>),
     Connecting(BoxFuture<'static, Result<Transport, io::Error>>),
     Disconnected,
 }
 
-#[derive(Clone)]
 pub(crate) struct Inner {
     pub(crate) options: RiemannClientOptions,
-    pub(crate) state: Arc<Mutex<ClientState>>,
+    pub(crate) state: ClientState,
 }
 
 impl Future for Inner {
-    type Output = Result<Arc<Mutex<Transport>>, RiemannClientError>;
+    type Output = Result<Arc<Transport>, RiemannClientError>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        let mut inner_state = self.state.lock().unwrap();
-        match inner_state.deref_mut() {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        match &mut self.state {
             ClientState::Connected(conn) => Poll::Ready(Ok(conn.clone())),
             ClientState::Connecting(ref mut f) => match f.poll_unpin(cx) {
                 Poll::Ready(Ok(conn)) => {
                     // connected
-                    let conn = Arc::new(Mutex::new(conn));
-                    *inner_state = ClientState::Connected(conn.clone());
-                    Poll::Ready(Ok(conn))
+                    let connection = Arc::new(conn);
+                    self.state = ClientState::Connected(connection.clone());
+                    Poll::Ready(Ok(connection.clone()))
                 }
                 Poll::Ready(Err(e)) => {
                     // failed to connect, reset to disconnected
-                    *inner_state = ClientState::Disconnected;
+                    self.state = ClientState::Disconnected;
                     Poll::Ready(Err(RiemannClientError::from(e)))
                 }
                 Poll::Pending => {
@@ -50,7 +47,7 @@ impl Future for Inner {
             },
             ClientState::Disconnected => {
                 let f = Transport::connect(self.options.clone()).boxed();
-                *inner_state = ClientState::Connecting(f);
+                self.state = ClientState::Connecting(f);
                 cx.waker().clone().wake();
                 Poll::Pending
             }

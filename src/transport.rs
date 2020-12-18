@@ -1,6 +1,7 @@
 use std::io;
 use std::time::Duration;
 
+use futures::lock::Mutex;
 use futures::stream::{SplitSink, StreamExt};
 use futures::{SinkExt, TryFutureExt};
 use tokio::net::{TcpStream, UdpSocket};
@@ -33,7 +34,7 @@ where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     sender_queue: UnboundedSender<Sender<Msg>>,
-    socket_sender: SplitSink<Framed<S, MsgCodec>, Msg>,
+    socket_sender: Mutex<SplitSink<Framed<S, MsgCodec>, Msg>>,
 }
 
 impl<S: AsyncRead + AsyncWrite + Unpin + Send> TcpTransportInner<S> {
@@ -62,17 +63,19 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> TcpTransportInner<S> {
 
         TcpTransportInner {
             sender_queue: cb_queue_tx,
-            socket_sender: conn_sender,
+            socket_sender: Mutex::new(conn_sender),
         }
     }
 
-    async fn send_for_response(&mut self, msg: Msg, socket_timeout: u64) -> Result<Msg, io::Error> {
+    async fn send_for_response(&self, msg: Msg, socket_timeout: u64) -> Result<Msg, io::Error> {
         let (tx, rx) = oneshot::channel::<Msg>();
+
+        let mut sender = self.socket_sender.lock().await;
         self.sender_queue
             .send(tx)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        self.socket_sender
+        sender
             .send(msg)
             .map_err(|e| io::Error::new(io::ErrorKind::UnexpectedEof, e))
             .await?;
@@ -96,7 +99,7 @@ impl UdpTransportInner {
         Ok(UdpTransportInner { socket })
     }
 
-    async fn send_without_response(&mut self, msg: Msg) -> Result<(), io::Error> {
+    async fn send_without_response(&self, msg: Msg) -> Result<(), io::Error> {
         let buf = encode_for_udp(&msg)?;
 
         self.socket.send(buf.as_ref()).await.map(|_| ())
@@ -162,7 +165,7 @@ impl Transport {
     }
 
     pub(crate) async fn send_events(
-        &mut self,
+        &self,
         events: Vec<Event>,
         socket_timeout: u64,
     ) -> Result<Msg, io::Error> {
@@ -172,10 +175,10 @@ impl Transport {
         };
 
         match self {
-            Transport::PLAIN(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
+            Transport::PLAIN(ref inner) => inner.send_for_response(msg, socket_timeout).await,
             #[cfg(feature = "tls")]
-            Transport::TLS(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
-            Transport::UDP(ref mut inner) => {
+            Transport::TLS(ref inner) => inner.send_for_response(msg, socket_timeout).await,
+            Transport::UDP(ref inner) => {
                 inner.send_without_response(msg).await?;
                 let ok_msg = Msg {
                     ok: Some(true),
@@ -186,20 +189,16 @@ impl Transport {
         }
     }
 
-    pub(crate) async fn query(
-        &mut self,
-        query: Query,
-        socket_timeout: u64,
-    ) -> Result<Msg, io::Error> {
+    pub(crate) async fn query(&self, query: Query, socket_timeout: u64) -> Result<Msg, io::Error> {
         let msg = Msg {
             query: Some(query),
             ..Default::default()
         };
 
         match self {
-            Transport::PLAIN(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
+            Transport::PLAIN(ref inner) => inner.send_for_response(msg, socket_timeout).await,
             #[cfg(feature = "tls")]
-            Transport::TLS(ref mut inner) => inner.send_for_response(msg, socket_timeout).await,
+            Transport::TLS(ref inner) => inner.send_for_response(msg, socket_timeout).await,
             Transport::UDP(_) => Err(io::Error::new(io::ErrorKind::Other, "Unsupported.")),
         }
     }
