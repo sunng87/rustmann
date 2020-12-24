@@ -33,7 +33,7 @@ impl Future for Inner {
                     // connected
                     let connection = Arc::new(conn);
                     self.state = ClientState::Connected(connection.clone());
-                    Poll::Ready(Ok(connection.clone()))
+                    Poll::Ready(Ok(connection))
                 }
                 Poll::Ready(Err(e)) => {
                     // failed to connect, reset to disconnected
