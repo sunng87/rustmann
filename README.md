@@ -25,11 +25,6 @@ and [API docs](https://docs.rs/crate/rustmann/).
 - [x] Query API (`send_query`)
 - [x] Event Builder API
 
-## Minimal version policy
-
-This library relies heavily on async-await feature so it requires Rust
-1.39 and above to compile.
-
 ## License
 
 MIT/Apache-2.0
