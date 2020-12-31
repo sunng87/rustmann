@@ -21,7 +21,7 @@ async fn main() -> Result<(), RiemannClientError> {
         }
     });
 
-    while let Some(Ok(line)) = rx.next().await {
+    while let Some(Ok(line)) = rx.recv().await {
         if line == "quit" {
             break;
         }
