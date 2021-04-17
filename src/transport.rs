@@ -22,10 +22,10 @@ use crate::tls::setup_tls_client;
 
 #[derive(Debug)]
 pub(crate) enum Transport {
-    PLAIN(TcpTransportInner<TcpStream>),
+    Plain(TcpTransportInner<TcpStream>),
     #[cfg(feature = "tls")]
-    TLS(TcpTransportInner<TlsStream<TcpStream>>),
-    UDP(UdpTransportInner),
+    Tls(TcpTransportInner<TlsStream<TcpStream>>),
+    Udp(UdpTransportInner),
 }
 
 #[derive(Debug)]
@@ -124,7 +124,7 @@ impl Transport {
 
     async fn connect_udp(options: RiemannClientOptions) -> Result<Transport, io::Error> {
         let udp_transport = UdpTransportInner::new(&options).await?;
-        Ok(Transport::UDP(udp_transport))
+        Ok(Transport::Udp(udp_transport))
     }
 
     async fn connect_plain(options: RiemannClientOptions) -> Result<Transport, io::Error> {
@@ -139,7 +139,7 @@ impl Transport {
             socket.set_nodelay(true)?;
 
             let conn = TcpTransportInner::setup_conn(socket);
-            Ok(Transport::PLAIN(conn))
+            Ok(Transport::Plain(conn))
         })
     }
 
@@ -160,7 +160,7 @@ impl Transport {
         .await
         .map(|socket| {
             let conn = TcpTransportInner::setup_conn(socket);
-            Transport::TLS(conn)
+            Transport::Tls(conn)
         })
     }
 
@@ -175,10 +175,10 @@ impl Transport {
         };
 
         match self {
-            Transport::PLAIN(ref inner) => inner.send_for_response(msg, socket_timeout).await,
+            Transport::Plain(ref inner) => inner.send_for_response(msg, socket_timeout).await,
             #[cfg(feature = "tls")]
-            Transport::TLS(ref inner) => inner.send_for_response(msg, socket_timeout).await,
-            Transport::UDP(ref inner) => {
+            Transport::Tls(ref inner) => inner.send_for_response(msg, socket_timeout).await,
+            Transport::Udp(ref inner) => {
                 inner.send_without_response(msg).await?;
                 let ok_msg = Msg {
                     ok: Some(true),
@@ -196,10 +196,10 @@ impl Transport {
         };
 
         match self {
-            Transport::PLAIN(ref inner) => inner.send_for_response(msg, socket_timeout).await,
+            Transport::Plain(ref inner) => inner.send_for_response(msg, socket_timeout).await,
             #[cfg(feature = "tls")]
-            Transport::TLS(ref inner) => inner.send_for_response(msg, socket_timeout).await,
-            Transport::UDP(_) => Err(io::Error::new(io::ErrorKind::Other, "Unsupported.")),
+            Transport::Tls(ref inner) => inner.send_for_response(msg, socket_timeout).await,
+            Transport::Udp(_) => Err(io::Error::new(io::ErrorKind::Other, "Unsupported.")),
         }
     }
 }
