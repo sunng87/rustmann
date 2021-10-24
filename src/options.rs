@@ -4,7 +4,7 @@ use std::sync::Arc;
 use derive_builder::Builder;
 use getset::Getters;
 #[cfg(feature = "tls")]
-use tokio_rustls::rustls::ClientConfig;
+use tokio_rustls::rustls::{ClientConfig, OwnedTrustAnchor, RootCertStore};
 
 /// Riemann connection options
 #[derive(Builder, Clone, Getters)]
@@ -26,10 +26,19 @@ pub struct RiemannClientOptions {
 
 #[cfg(feature = "tls")]
 fn default_tls_config() -> Arc<ClientConfig> {
-    let mut tls_config = ClientConfig::new();
-    tls_config
-        .root_store
-        .add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
+    let mut root_cert_store = RootCertStore::empty();
+    root_cert_store.add_server_trust_anchors(webpki_roots::TLS_SERVER_ROOTS.0.iter().map(|ta| {
+        OwnedTrustAnchor::from_subject_spki_name_constraints(
+            ta.subject,
+            ta.spki,
+            ta.name_constraints,
+        )
+    }));
+
+    let tls_config = ClientConfig::builder()
+        .with_safe_defaults()
+        .with_root_certificates(root_cert_store)
+        .with_no_client_auth();
     Arc::new(tls_config)
 }
 
@@ -47,16 +56,13 @@ impl RiemannClientOptionsBuilder {
 
     #[cfg(feature = "tls")]
     fn get_tls_config(&self) -> Option<Arc<ClientConfig>> {
-        self.tls_config
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(|| {
-                if self.tls_enabled() {
-                    Some(default_tls_config())
-                } else {
-                    None
-                }
-            })
+        self.tls_config.as_ref().cloned().unwrap_or_else(|| {
+            if self.tls_enabled() {
+                Some(default_tls_config())
+            } else {
+                None
+            }
+        })
     }
 
     pub fn build(self) -> RiemannClientOptions {

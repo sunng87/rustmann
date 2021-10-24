@@ -1,8 +1,9 @@
+use std::convert::TryFrom;
 use std::io;
 
 use tokio::net::TcpStream;
+use tokio_rustls::rustls::ServerName;
 use tokio_rustls::{Connect, TlsConnector};
-use webpki::DNSNameRef;
 
 use crate::options::RiemannClientOptions;
 
@@ -17,7 +18,7 @@ pub(crate) fn setup_tls_client(
     };
     let connector = TlsConnector::from(tls_config);
 
-    let dns_name = DNSNameRef::try_from_ascii_str(options.host())
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let dns_name = ServerName::try_from(options.host().as_ref())
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid DnsName"))?;
     Ok(connector.connect(dns_name, socket))
 }
