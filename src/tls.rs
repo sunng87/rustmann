@@ -19,6 +19,7 @@ pub(crate) fn setup_tls_client(
     let connector = TlsConnector::from(tls_config);
 
     let dns_name = ServerName::try_from(options.host().as_str())
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid DnsName"))?;
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid DnsName"))?
+        .to_owned();
     Ok(connector.connect(dns_name, socket))
 }
